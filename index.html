@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Times Table Stars</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a math notebook page. One column: score strip, problem card, chunky sticker keys. */
+:root {
+  --paper: #f4f8ff;
+  --grid: #d5e2f7;
+  --ink: #1b2a4e;
+  --card: #ffffff;
+  --muted: #5c6b8c;
+  --marker: #ffc933;
+  --accent: #2f6fed;
+  --on-accent: #ffffff;
+  --good: #1f9d62;
+  --good-bg: #dff6e9;
+  --miss: #d9482f;
+  --miss-bg: #ffe6e0;
+  --series-1: #2a78d6;
+  --y1: #6e5200; --y2: #9a7400; --y3: #c99a00; --y4: #f2c200; --y5: #ffe033;
+  --g1: #0f4d2e; --g2: #17703f; --g3: #25a45c; --g4: #3ecf7a; --g5: #7df0a6;
+  --series-2: #eb6834;
+  --display: "Baloo 2", "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
+  --body: "Atkinson Hyperlegible", Verdana, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #121a30; --grid: #1e2a4a; --ink: #eef3ff; --card: #1b2644; --muted: #9eadcf;
+    --marker: #ffc933; --accent: #6fa0ff; --on-accent: #0d1630;
+    --good: #4fd693; --good-bg: #153a2b; --miss: #ff8a75; --miss-bg: #46201b;
+    --series-1: #3987e5; --series-2: #d95926;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #121a30; --grid: #1e2a4a; --ink: #eef3ff; --card: #1b2644; --muted: #9eadcf;
+  --marker: #ffc933; --accent: #6fa0ff; --on-accent: #0d1630;
+  --good: #4fd693; --good-bg: #153a2b; --miss: #ff8a75; --miss-bg: #46201b;
+    --series-1: #3987e5; --series-2: #d95926;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body {
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 28px 28px;
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 17px;
+  overflow-y: auto;
+}
+.game {
+  min-height: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 14px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Score strip */
+.strip { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.level { font-family: var(--display); font-weight: 800; font-size: 20px; line-height: 1.1; }
+.counts { display: flex; gap: 8px; }
+.chip {
+  font-family: var(--display); font-weight: 800; font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  background: var(--card); border: 2px solid var(--ink); border-radius: 999px;
+  padding: 2px 12px; white-space: nowrap;
+}
+.mute { cursor: pointer; color: var(--ink); line-height: inherit; }
+.mute:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.mute[aria-pressed="true"] { background: var(--paper); border-style: dashed; }
+.meter { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+.meter-track {
+  flex: 1; height: 14px; background: var(--card);
+  border: 2px solid var(--ink); border-radius: 999px; overflow: hidden;
+}
+.meter-fill { height: 100%; width: 0; background: var(--marker); transition: width .35s ease; }
+
+/* Problem card */
+.card {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 230px;
+  background: var(--card);
+  border: 3px solid var(--ink);
+  border-radius: 22px;
+  box-shadow: 0 6px 0 var(--ink);
+  padding: 12px 14px 14px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  text-align: center;
+  transition: background-color .15s, border-color .15s;
+}
+.card.right { background: var(--good-bg); border-color: var(--good); box-shadow: 0 6px 0 var(--good); }
+.card.wrong { background: var(--miss-bg); border-color: var(--miss); box-shadow: 0 6px 0 var(--miss); }
+.card.wrong .problem { animation: shake .35s; }
+
+.timer { display: flex; gap: 6px; font-size: 26px; line-height: 1; min-height: 28px; }
+.timer span { transition: opacity .4s, filter .4s, transform .4s; }
+.timer span.gone { opacity: .22; filter: grayscale(1); transform: scale(.8); }
+.timer.hidden { visibility: hidden; }
+
+.problem {
+  font-family: var(--display); font-weight: 800;
+  font-size: clamp(46px, 15vw, 68px); line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  display: flex; align-items: center; justify-content: center; gap: .22em; flex-wrap: wrap;
+}
+.answer {
+  min-width: 1.9em; padding: 0 .18em;
+  border-bottom: 6px solid var(--accent);
+  color: var(--accent);
+  border-radius: 6px 6px 0 0;
+}
+.answer:empty::before { content: "?"; opacity: .35; }
+.card.right .answer { color: var(--good); border-color: var(--good); }
+.card.wrong .answer { color: var(--miss); border-color: var(--miss); text-decoration: line-through; }
+
+.feedback { min-height: 78px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.big-emoji { font-size: 34px; line-height: 1; min-height: 36px; }
+.big-emoji.pop { animation: pop .4s cubic-bezier(.3,1.6,.5,1); }
+#question.pop { animation: pop .3s cubic-bezier(.3,1.6,.5,1); }
+.msg { font-family: var(--display); font-weight: 800; font-size: 22px; line-height: 1.15; text-wrap: balance; }
+.card.right .msg { color: var(--good); }
+.card.wrong .msg { color: var(--miss); }
+.sub { font-size: 15px; color: var(--muted); min-height: 19px; }
+
+/* Keys */
+.pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.key {
+  font-family: var(--display); font-weight: 800; font-size: 28px; line-height: 1;
+  color: var(--ink); background: var(--card);
+  border: 3px solid var(--ink); border-radius: 16px;
+  box-shadow: 0 4px 0 var(--ink);
+  min-height: 54px; padding: 6px 0 2px;
+  cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none;
+}
+.key:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 0 0 var(--ink); }
+.key:disabled { opacity: .45; cursor: default; }
+.key:focus-visible, .link:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.key.wide { grid-column: span 2; }
+.key.go {
+  grid-column: 1 / -1;
+  background: var(--accent); color: var(--on-accent);
+  font-size: 26px; min-height: 60px;
+}
+.foot { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+.round-info { font-size: 15px; color: var(--muted); min-height: 19px; }
+
+/* Player screen */
+.home-title { font-family: var(--display); font-weight: 800; font-size: 38px; line-height: 1; margin: 18px 0 0; }
+.home-sub { font-family: var(--display); font-weight: 600; font-size: 22px; margin: 0; }
+.notice {
+  background: var(--card); border: 2px dashed var(--muted); border-radius: 12px;
+  padding: 8px 12px; font-size: 15px;
+}
+.players { display: flex; flex-direction: column; gap: 12px; }
+.player-row { display: flex; gap: 8px; align-items: stretch; }
+.player {
+  flex: 1; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;
+  font-size: 24px; padding: 8px 16px 4px; text-align: left;
+}
+.player small { font-family: var(--body); font-weight: 400; font-size: 15px; color: var(--muted); }
+.remove { font-size: 15px; font-family: var(--body); font-weight: 700; padding: 0 12px; min-width: 52px; color: var(--muted); }
+.new-player { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.new-player label { font-family: var(--display); font-weight: 600; font-size: 20px; }
+.new-row { display: flex; gap: 8px; }
+.new-row input {
+  flex: 1; min-width: 0; font: inherit; font-size: 20px; color: var(--ink); background: var(--card);
+  border: 3px solid var(--ink); border-radius: 16px; padding: 10px 14px;
+}
+.new-row input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.new-row .key.go { grid-column: auto; padding: 6px 18px 2px; min-height: 54px; }
+.link {
+  background: none; border: 0; padding: 4px 8px; cursor: pointer;
+  font: inherit; font-size: 14px; color: var(--muted); text-decoration: underline;
+}
+
+/* Report */
+.report-title { font-family: var(--display); font-weight: 800; font-size: 32px; line-height: 1.05; margin: 14px 0 0; text-wrap: balance; }
+.report-line { margin: 0; font-size: 17px; }
+.panel {
+  background: var(--card); border: 3px solid var(--ink); border-radius: 18px;
+  padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px;
+}
+.panel h2 { font-family: var(--display); font-weight: 800; font-size: 21px; line-height: 1.1; margin: 0; }
+.panel h3 { font-family: var(--display); font-weight: 600; font-size: 18px; margin: 4px 0 0; }
+.panel p { margin: 0; font-size: 15px; color: var(--muted); }
+.panel p.strong { color: var(--ink); font-size: 16px; }
+.cheer { background: var(--marker); color: #1b2a4e; border-color: #1b2a4e; text-align: center; }
+.cheer h2 { font-size: 24px; }
+.cheer p { color: #1b2a4e; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fact {
+  font-family: var(--display); font-weight: 600; font-size: 17px; line-height: 1.2;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+  border-radius: 999px; padding: 3px 11px 1px; border: 2px solid;
+}
+.fact.well { background: var(--good-bg); border-color: var(--good); }
+.fact.work { background: var(--miss-bg); border-color: var(--miss); }
+.fact.slow { background: var(--paper); border-color: var(--marker); }
+.fact { white-space: normal; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { width: 14px; height: 4px; border-radius: 2px; display: inline-block; }
+.chart { width: 100%; height: auto; display: block; }
+.chart text { font-family: var(--body); font-size: 12px; fill: var(--muted); font-variant-numeric: tabular-nums; }
+.chart .end { fill: var(--ink); font-weight: 700; }
+.chart .hit { fill: transparent; cursor: pointer; outline: none; }
+.chart .hit:focus-visible { stroke: var(--accent); stroke-width: 2; }
+.readout { font-size: 15px; min-height: 20px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.numbers { font-size: 14px; color: var(--muted); }
+.numbers summary { cursor: pointer; }
+.numbers table { border-collapse: collapse; margin-top: 6px; width: 100%; font-variant-numeric: tabular-nums; }
+.numbers th, .numbers td { text-align: right; padding: 3px 6px; border-bottom: 1px solid var(--grid); }
+.numbers th:first-child, .numbers td:first-child { text-align: left; }
+.grid10 { display: grid; grid-template-columns: repeat(11, 1fr); gap: 3px; font-variant-numeric: tabular-nums; }
+.grid10 > * {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; border-radius: 6px; line-height: 1;
+}
+.grid10 .head { font-family: var(--display); font-weight: 800; color: var(--muted); }
+.grid10 .cell { background: var(--paper); border: 1px solid var(--grid); color: var(--ink); }
+.grid10 .cell { cursor: pointer; padding: 0; font: inherit; font-size: 13px; }
+.grid10 .cell.y1 { background: var(--y1); border-color: var(--y1); color: #ffffff; }
+.grid10 .cell.y2 { background: var(--y2); border-color: var(--y2); color: #ffffff; }
+.grid10 .cell.y3 { background: var(--y3); border-color: var(--y3); color: #1b2a4e; }
+.grid10 .cell.y4 { background: var(--y4); border-color: var(--y4); color: #1b2a4e; }
+.grid10 .cell.y5 { background: var(--y5); border-color: var(--y5); color: #1b2a4e; }
+.grid10 .cell.g1 { background: var(--g1); border-color: var(--g1); color: #ffffff; }
+.grid10 .cell.g2 { background: var(--g2); border-color: var(--g2); color: #ffffff; }
+.grid10 .cell.g3 { background: var(--g3); border-color: var(--g3); color: #1b2a4e; }
+.grid10 .cell.g4 { background: var(--g4); border-color: var(--g4); color: #1b2a4e; }
+.grid10 .cell.g5 { background: var(--g5); border-color: var(--g5); color: #1b2a4e; }
+.grid10 .cell.y0 { background: var(--marker); border-color: var(--marker); color: #1b2a4e; }
+.grid10 .cell.g0 { background: var(--good-bg); border-color: var(--good); }
+.grid10 .cell.work { background: var(--miss-bg); border: 2px solid var(--miss); font-weight: 700; }
+.grid10 .cell.sel { outline: 3px solid var(--accent); outline-offset: 1px; }
+.grid10 .cell:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+.heat-key { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.heat-key i { width: 34px; height: 16px; border-radius: 4px; border: 1px solid var(--grid); display: inline-block; }
+.bar { height: 12px; background: var(--paper); border: 2px solid var(--ink); border-radius: 999px; overflow: hidden; }
+.bar div { height: 100%; background: var(--marker); }
+.report-actions { display: flex; flex-direction: column; gap: 10px; align-items: center; padding-bottom: 12px; }
+.report-actions .key.go { width: 100%; }
+.cloud { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
+.report-btn { font-size: 20px; padding: 0 10px; min-width: 52px; }
+
+/* Insane mode */
+.mode {
+  font-family: var(--display); font-weight: 800; font-size: 17px; line-height: 1.2;
+  color: var(--ink); background: var(--card); border: 2px solid var(--ink); border-radius: 999px;
+  padding: 5px 14px 3px; cursor: pointer;
+}
+.mode[aria-pressed="true"] { background: var(--miss); border-color: var(--miss); color: var(--card); }
+.mode:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.problem.big { font-size: clamp(32px, 10.5vw, 48px); }
+.feedback { gap: 6px; }
+.fuse { width: 70%; height: 12px; border: 2px solid var(--ink); border-radius: 999px; overflow: hidden; background: var(--card); margin: 8px 0; }
+.fuse i { display: block; height: 100%; width: 100%; background: var(--miss); }
+
+/* Level-up burst */
+.burst { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.burst span {
+  position: absolute; left: 50%; top: 50%; font-size: 28px;
+  animation: fly 1.3s ease-out forwards;
+}
+@keyframes fly {
+  from { transform: translate(-50%, -50%) scale(.4); opacity: 1; }
+  to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.2) rotate(var(--rot)); opacity: 0; }
+}
+@keyframes pop { from { transform: scale(.3); } to { transform: scale(1); } }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .big-emoji.pop, #question.pop, .card.wrong .problem { animation: none; }
+  .burst { display: none; }
+  .meter-fill, .timer span { transition: none; }
+}
+@media (max-height: 640px) {
+  .card { min-height: 200px; }
+  .key { min-height: 46px; font-size: 24px; }
+  .key.go { min-height: 52px; }
+}
+</style>
+</head>
+<body>
+<main class="game" id="home">
+  <h1 class="home-title">Times Table Stars ⭐</h1>
+  <div class="notice" id="notice" hidden></div>
+  <p class="home-sub" id="whoLabel">Who is playing?</p>
+  <div class="players" id="players"></div>
+  <form class="new-player" id="newForm" autocomplete="off">
+    <label for="newName" id="newLabel">New player</label>
+    <div class="new-row">
+      <input id="newName" type="text" maxlength="18" placeholder="Type your name" autocapitalize="words" spellcheck="false">
+      <button class="key go" type="submit" id="newGo">Start ▶</button>
+    </div>
+  </form>
+  <p class="cloud" id="cloud"></p>
+</main>
+
+<main class="game" id="report" hidden>
+  <div id="reportBody" style="display:flex;flex-direction:column;gap:12px"></div>
+  <div class="report-actions">
+    <button class="key go" type="button" id="againBtn">Play again ▶</button>
+    <button class="mode" type="button" id="modeBtn2" aria-pressed="false">🔥 Insane mode: OFF</button>
+    <button class="mode" type="button" id="bigBtn2" aria-pressed="false" hidden>🧮 3-digit mode: OFF</button>
+    <button class="link" type="button" id="switchBtn">Switch player</button>
+  </div>
+</main>
+
+<main class="game" id="play" hidden>
+  <div class="strip">
+    <div class="level" id="level">Level 1 · Sprout 🌱</div>
+    <div class="counts">
+      <div class="chip" id="stars" aria-label="Stars collected">⭐ 0</div>
+      <div class="chip" id="streak" aria-label="Correct in a row">🔥 0</div>
+      <button class="chip mute" type="button" id="musicBtn" aria-pressed="false" aria-label="Mute music">🔊</button>
+    </div>
+  </div>
+  <div class="meter">
+    <span>Next level</span>
+    <div class="meter-track" role="progressbar" aria-label="Progress to next level" aria-valuemin="0" aria-valuemax="100" id="meterTrack">
+      <div class="meter-fill" id="meterFill"></div>
+    </div>
+    <span id="nextEmoji">🧭</span>
+  </div>
+
+  <section class="card" id="card">
+    <div class="round-info" id="roundInfo"></div>
+    <div class="fuse" id="fuse" hidden aria-hidden="true"><i></i></div>
+    <div class="timer hidden" id="timer" aria-hidden="true"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+    <div class="problem" id="problem">
+      <span id="question">Ready?</span>
+      <span id="equals" hidden>=</span>
+      <span class="answer" id="answer" hidden></span>
+    </div>
+    <div class="feedback" aria-live="polite">
+      <div class="big-emoji" id="emoji">👋</div>
+      <div class="msg" id="msg">Answer fast to win more stars!</div>
+      <div class="sub" id="sub"></div>
+      <button class="mode" type="button" id="modeBtn" aria-pressed="false" hidden>🔥 Insane mode: OFF</button>
+      <button class="mode" type="button" id="bigBtn" aria-pressed="false" hidden>🧮 3-digit mode: OFF</button>
+    </div>
+    <div class="burst" id="burst" aria-hidden="true"></div>
+  </section>
+
+  <div class="pad" id="pad">
+    <button class="key" type="button" data-k="1">1</button>
+    <button class="key" type="button" data-k="2">2</button>
+    <button class="key" type="button" data-k="3">3</button>
+    <button class="key" type="button" data-k="4">4</button>
+    <button class="key" type="button" data-k="5">5</button>
+    <button class="key" type="button" data-k="6">6</button>
+    <button class="key" type="button" data-k="7">7</button>
+    <button class="key" type="button" data-k="8">8</button>
+    <button class="key" type="button" data-k="9">9</button>
+    <button class="key wide" type="button" data-k="0">0</button>
+    <button class="key" type="button" data-k="back" aria-label="Erase">⌫</button>
+    <button class="key go" type="button" id="go">Play ▶</button>
+  </div>
+  <div class="foot"><button class="link" type="button" id="stop">Stop round</button></div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Game rules ----------
+  // Levels with a table add that table. Levels without one are mix-up levels: everything so far, no new facts.
+  var LEVELS = [
+    { name: "Sprout",       emoji: "🌱", tables: [1] },
+    { name: "Scout",        emoji: "🔦", tables: [10] },
+    { name: "Explorer",     emoji: "🧭", tables: [2] },
+    { name: "Camper",       emoji: "⛺", tables: [] },
+    { name: "Hiker",        emoji: "🥾", tables: [5] },
+    { name: "Ranger",       emoji: "🌲", tables: [] },
+    { name: "Climber",      emoji: "🧗", tables: [3] },
+    { name: "Skier",        emoji: "⛷️", tables: [] },
+    { name: "Diver",        emoji: "🤿", tables: [4] },
+    { name: "Sailor",       emoji: "⛵", tables: [] },
+    { name: "Pilot",        emoji: "✈️", tables: [6] },
+    { name: "Racer",        emoji: "🏎️", tables: [] },
+    { name: "Captain",      emoji: "⚓", tables: [9] },
+    { name: "Knight",       emoji: "🛡️", tables: [] },
+    { name: "Astronaut",    emoji: "🚀", tables: [7] },
+    { name: "Inventor",     emoji: "💡", tables: [] },
+    { name: "Wizard",       emoji: "🧙", tables: [8] },
+    { name: "Dragon Tamer", emoji: "🐉", tables: [] },
+    { name: "Superhero",    emoji: "🦸", tables: [], tough: true }, // tough middle of the chart most
+    { name: "Champion",     emoji: "🏅", tables: [], tough: true }
+  ];
+  // Where levels from earlier versions land in these 20.
+  var FROM_5 = [4, 8, 12, 16, 19];
+  var FROM_10 = [1, 2, 4, 6, 8, 10, 12, 14, 16, 19];
+
+  var INSANE_MS = 5000; // insane mode: a right answer only counts within this time
+  var BIG_FAST_MS = 20000, BIG_OK_MS = 40000, BIG_IDLE_MS = 120000; // 3-digit mode gets far more time
+  var FAST_MS = 5000;   // 3 stars at or under this
+  var OK_MS = 8000;     // 2 stars at or under this, 1 star after
+  var METER_GOAL = 8;   // points needed to move up a level
+  var STORE_KEY = "times-table-stars-v2";
+  var CLOUD_ON = false; // account saving is built but switched off until asked for
+  var IDLE_MS = 45000;  // leave the round after this long with no key or tap
+
+  var MSG = {
+    3: [["⚡", "Lightning fast!"], ["🚀", "Zoom! So speedy!"], ["🤩", "Wow, that was quick!"], ["🏎️", "Super speed!"]],
+    2: [["🎉", "Great job!"], ["😄", "You got it!"], ["👏", "Nice work!"], ["🌟", "Correct!"]],
+    1: [["🧠", "Correct! Good thinking!"], ["👍", "You got it!"], ["🐢", "Right! Slow and steady."]],
+    0: [["💪", "Almost!"], ["🤗", "Good try!"], ["🌈", "Not quite. You'll get it!"]]
+  };
+  var STREAK_MSG = { 3: "3 in a row!", 5: "5 in a row! You're on fire!", 10: "10 in a row! Unstoppable! 🏆", 15: "15 in a row! Amazing! 👑", 20: "20 in a row! Math legend! 🦸" };
+
+  function freshState() {
+    return { level: 0, meter: 0, stars: 0, streak: 0, best: 0, count: 0, w: {}, retry: [], recent: [], f: {}, hist: [], learned: false, v: 3, insane: false, fi: {}, learnedI: false, big: false, rev: 0, last: null };
+  }
+  function keyOf(a, b) { return a + "x" + b; }
+  var CHART_FACTS = 100; // 1×1 to 10×10; 3×7 and 7×3 count separately
+  // Insane mode keeps its own chart of stars, separate from the normal one.
+  function facts(s) { return s.insane ? s.fi : s.f; }
+  function allLearned(s) { return s.insane ? s.learnedI : s.learned; }
+  function isLearned(s, k) { var r = facts(s)[k]; return !!(r && r.c >= 3); }
+  function learnedCount(s) {
+    var n = 0;
+    for (var a = 1; a <= 10; a++) for (var b = 1; b <= 10; b++) if (isLearned(s, keyOf(a, b))) n++;
+    return n;
+  }
+  function rand(list) { return list[Math.floor(Math.random() * list.length)]; }
+
+  // Pick the next fact. Missed and slow facts weigh more; newly unlocked tables weigh double.
+  function pickFact(s) {
+    if (s.big) {
+      // 3-digit mode: a number from 100 to 999 times a number from 2 to 9.
+      var n3 = 100 + Math.floor(Math.random() * 900), n1 = 2 + Math.floor(Math.random() * 8);
+      return Math.random() < 0.8 ? { a: n3, b: n1 } : { a: n1, b: n3 };
+    }
+    var last = s.recent[s.recent.length - 1];
+    for (var i = 0; i < s.retry.length; i++) {
+      var r = s.retry[i];
+      if (r.due <= s.count && keyOf(r.a, r.b) !== last) {
+        s.retry.splice(i, 1);
+        return { a: r.a, b: r.b };
+      }
+    }
+    var fresh = LEVELS[s.level].tables;
+    var seen, pool, total;
+    // A starred fact (3 right in a row) is never asked again. Try, in order: this level's
+    // unstarred facts; the same ignoring "just asked"; unstarred facts from any level;
+    // and only when the whole chart is starred, everything.
+    var tries = [[s.level, true, false], [s.level, false, false], [LEVELS.length - 1, false, false], [LEVELS.length - 1, false, true]];
+    for (var t = 0; t < tries.length; t++) {
+      build(tries[t][0], tries[t][1], tries[t][2]);
+      if (pool.length) break;
+    }
+    function build(topLevel, skipRecent, allowStarred) {
+      seen = {}; pool = []; total = 0;
+      for (var l = 0; l <= topLevel; l++) {
+        LEVELS[l].tables.forEach(function (x) {
+          for (var o = 1; o <= 10; o++) { add(x, o); add(o, x); } // never a factor above 10
+        });
+      }
+      function add(a, b) {
+        var k = keyOf(a, b);
+        if (seen[k]) return;
+        seen[k] = true;
+        if (!allowStarred && isLearned(s, k)) return;
+        // Skip what was just asked, in either order.
+        if (skipRecent && (s.recent.indexOf(k) !== -1 || s.recent.indexOf(keyOf(b, a)) !== -1)) return;
+        var wt = (s.w[k] || 3) * (fresh.indexOf(a) !== -1 || fresh.indexOf(b) !== -1 ? 2 : 1);
+        // Top level: the tough middle of the chart (6 to 9) comes up most.
+        if (LEVELS[s.level].tough && a >= 6 && a <= 9 && b >= 6 && b <= 9) wt *= 2;
+        pool.push({ a: a, b: b, wt: wt });
+        total += wt;
+      }
+    }
+    var roll = Math.random() * total, pick = pool[pool.length - 1];
+    for (var j = 0; j < pool.length; j++) {
+      roll -= pool[j].wt;
+      if (roll <= 0) { pick = pool[j]; break; }
+    }
+    return { a: pick.a, b: pick.b };
+  }
+
+  // Score one answer. Returns { correct, stars, change } and updates the state.
+  function grade(s, fact, given, ms, untimed) {
+    if (s.big) {
+      // 3-digit mode is bonus play: it earns stars and streaks but leaves levels and the chart alone.
+      var okBig = given === fact.a * fact.b;
+      var stBig = !okBig ? 0 : untimed ? 2 : ms <= BIG_FAST_MS ? 3 : ms <= BIG_OK_MS ? 2 : 1;
+      if (okBig) { s.stars += stBig; s.streak += 1; s.best = Math.max(s.best, s.streak); } else { s.streak = 0; }
+      return { correct: okBig, stars: stBig, change: null, learned: false };
+    }
+    var k = keyOf(fact.a, fact.b);
+    var correct = given === fact.a * fact.b && (!s.insane || ms <= INSANE_MS);
+    var stars = !correct ? 0 : s.insane ? 3 : untimed ? 2 : ms <= FAST_MS ? 3 : ms <= OK_MS ? 2 : 1;
+    var w = s.w[k] || 3;
+    var book = facts(s), rec = book[k] || (book[k] = { c: 0, n: 0, r: 0, t: 0 });
+    rec.n += 1;
+    if (correct) {
+      rec.r += 1; rec.c += 1;
+      if (!untimed) rec.t = rec.t ? rec.t * 0.6 + ms * 0.4 : ms;
+    } else { rec.c = 0; }
+    var learnedNow = false;
+    if (!allLearned(s) && correct && learnedCount(s) === CHART_FACTS) {
+      if (s.insane) s.learnedI = true; else s.learned = true;
+      learnedNow = true;
+    }
+    if (!correct) {
+      s.w[k] = Math.min(9, w + 3);
+      s.retry.push({ a: fact.a, b: fact.b, due: s.count + 3 });
+      s.meter -= 2;
+      s.streak = 0;
+    } else {
+      s.w[k] = Math.max(1, Math.min(9, w + [0.5, -0.5, -1][stars - 1]));
+      s.meter += [0.5, 1, 2][stars - 1];
+      s.stars += stars;
+      s.streak += 1;
+      s.best = Math.max(s.best, s.streak);
+    }
+    s.count += 1;
+    s.recent.push(k);
+    if (s.recent.length > 3) s.recent.shift();
+
+    var change = null;
+    if (s.meter >= METER_GOAL) {
+      if (s.level < LEVELS.length - 1) { s.level += 1; s.meter = 2; change = "up"; }
+      else { s.meter = METER_GOAL; }
+    } else if (s.meter < 0) {
+      if (s.level > 0) { s.level -= 1; s.meter = 5; change = "down"; }
+      else { s.meter = 0; }
+    }
+    return { correct: correct, stars: stars, change: change, learned: learnedNow };
+  }
+
+  // ---------- Screen ----------
+  var $ = function (id) { return document.getElementById(id); };
+  var el = {
+    level: $("level"), stars: $("stars"), streak: $("streak"),
+    meterTrack: $("meterTrack"), meterFill: $("meterFill"), nextEmoji: $("nextEmoji"),
+    card: $("card"), problem: $("problem"), timer: $("timer"), question: $("question"), equals: $("equals"), answer: $("answer"),
+    emoji: $("emoji"), msg: $("msg"), sub: $("sub"), burst: $("burst"),
+    pad: $("pad"), go: $("go"), stop: $("stop"), musicBtn: $("musicBtn"), roundInfo: $("roundInfo"),
+    home: $("home"), play: $("play"), notice: $("notice"), players: $("players"),
+    report: $("report"), reportBody: $("reportBody"), againBtn: $("againBtn"), switchBtn: $("switchBtn"), modeBtn: $("modeBtn"), modeBtn2: $("modeBtn2"), bigBtn: $("bigBtn"), bigBtn2: $("bigBtn2"), fuse: $("fuse"),
+    cloud: $("cloud"), whoLabel: $("whoLabel"), newForm: $("newForm"), newName: $("newName"), newLabel: $("newLabel")
+  };
+  var digitKeys = Array.prototype.slice.call(el.pad.querySelectorAll("[data-k]"));
+
+  var players = [], current = null, state = null, round = null;
+  var phase = "home", fact = null, typed = "", t0 = 0, untimed = false;
+  var timers = [], nextTimer = null, idleTimer = null, armed = null;
+
+  // Players are saved in two places: this browser (instant, works offline) and the game's
+  // own database on the user's Claude account (survives closing the tab, clearing the
+  // browser, and switching devices).
+  function saveLocal() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ players: players })); } catch (e) {}
+  }
+  function save() {
+    if (current) {
+      state.rev = (state.rev || 0) + 1;         // newer copy wins when two copies meet
+      state.last = new Date().toISOString();    // when this player last did something
+    }
+    saveLocal();
+    if (current) pushPlayer(current);
+  }
+  function normState(raw) {
+    var st = Object.assign(freshState(), raw);
+    var lv = Math.max(0, Math.floor(raw.level) || 0);
+    st.level = !raw.v ? FROM_5[Math.min(lv, 4)] : raw.v === 2 ? FROM_10[Math.min(lv, 9)] : Math.min(lv, LEVELS.length - 1);
+    st.v = 3;
+    st.retry = (st.retry || []).filter(function (r) { return r.a <= 10 && r.b <= 10; });
+    return st;
+  }
+  function validPlayer(p) { return p && typeof p.name === "string" && p.s && typeof p.s.level === "number"; }
+  function load() {
+    try {
+      var d = JSON.parse(localStorage.getItem(STORE_KEY));
+      if (d && Array.isArray(d.players)) {
+        return d.players.filter(validPlayer).map(function (p) {
+          return { id: p.id || null, synced: !!p.synced, name: p.name, s: normState(p.s) };
+        });
+      }
+    } catch (e) {}
+    return [];
+  }
+
+  // ---------- Cloud save ----------
+  var cloud = { db: null, state: "connecting", pending: null, writing: {}, dirty: {} };
+  function newId() { return "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  function renderCloud() {
+    el.cloud.hidden = !CLOUD_ON;
+    el.cloud.textContent = cloud.state === "on" ? "☁️ Players are saved to your Claude account."
+      : cloud.state === "connecting" ? "☁️ Looking for saved players…"
+      : "💾 Players are saved on this device only right now.";
+  }
+  function pushPlayer(p) {
+    if (!cloud.db || cloud.state !== "on") return;
+    if (!p.id) p.id = newId();
+    cloud.dirty[p.id] = p;
+    flushPlayer(p.id);
+  }
+  // One write at a time per player; answers given while a write is in flight go out in the next one.
+  function flushPlayer(id) {
+    if (cloud.writing[id] || cloud.state !== "on") return;
+    var p = cloud.dirty[id];
+    if (!p) return;
+    delete cloud.dirty[id];
+    cloud.writing[id] = true;
+    var body = JSON.parse(JSON.stringify({ name: p.name, s: p.s, rev: p.s.rev || 0, last: p.s.last || null }));
+    function done() { cloud.writing[id] = false; flushPlayer(id); }
+    cloud.db.collection("players").doc(id).set(body).then(function () {
+      if (!p.synced) { p.synced = true; saveLocal(); }
+      done();
+    }, function (e) {
+      if (e && e.code === "unavailable") {
+        if (!cloud.dirty[id]) cloud.dirty[id] = p;
+        setTimeout(done, 3000 + Math.random() * 2000);
+      } else {
+        cloud.state = "off"; cloud.writing[id] = false; renderCloud();
+      }
+    });
+  }
+  function connectCloud() {
+    if (!(window.claude && typeof window.claude.use === "function")) { cloud.state = "off"; renderCloud(); return; }
+    var giveUp = setTimeout(function () { if (cloud.state === "connecting") { cloud.state = "off"; renderCloud(); } }, 12000);
+    Promise.resolve(window.claude.use("db")).then(function (db) {
+      if (!db) throw new Error("no db");
+      cloud.db = db;
+      return db.collection("players").limit(500).get();
+    }).then(function (snap) {
+      clearTimeout(giveUp);
+      cloud.pending = snap.docs.map(function (d) { return { id: d.id, data: JSON.parse(JSON.stringify(d.data() || {})) }; });
+      cloud.state = "on";
+      if (phase === "home") showHome(el.notice.hidden ? "" : el.notice.textContent); else renderCloud();
+    }).catch(function () {
+      clearTimeout(giveUp);
+      cloud.state = "off"; renderCloud();
+    });
+  }
+  // Combine the account's copy with this browser's copy. For each player the copy with more saves wins.
+  function mergeCloud() {
+    if (!cloud.pending) return;
+    var remote = cloud.pending, seen = {}, push = [];
+    cloud.pending = null;
+    remote.forEach(function (r) {
+      if (!validPlayer(r.data)) return;
+      seen[r.id] = true;
+      var st = normState(r.data.s);
+      var mine = players.filter(function (p) { return p.id === r.id; })[0]
+        || players.filter(function (p) { return !p.id && p.name.toLowerCase() === r.data.name.toLowerCase(); })[0];
+      if (!mine) { players.push({ id: r.id, synced: true, name: r.data.name, s: st }); return; }
+      mine.id = r.id; mine.synced = true;
+      if ((st.rev || 0) > (mine.s.rev || 0)) mine.s = st;
+      else if ((mine.s.rev || 0) > (st.rev || 0)) push.push(mine);
+    });
+    players = players.filter(function (p) {
+      if (p.id && seen[p.id]) return true;
+      if (p.synced) return false;      // it was in the account before and has been removed elsewhere
+      if (!p.id) p.id = newId();
+      push.push(p);                    // only on this device so far: upload it
+      return true;
+    });
+    saveLocal();
+    push.forEach(pushPlayer);
+  }
+
+  // ---------- Player screen ----------
+  function showHome(note) {
+    phase = "home";
+    stopMusic();
+    clearTimers();
+    clearTimeout(idleTimer);
+    current = null; state = null; round = null;
+    mergeCloud();
+    renderCloud();
+    el.play.hidden = true; el.report.hidden = true; el.home.hidden = false;
+    el.notice.hidden = !note; el.notice.textContent = note || "";
+    el.players.textContent = "";
+    players.forEach(function (p) {
+      var L = LEVELS[p.s.level];
+      var row = document.createElement("div"); row.className = "player-row";
+      var b = document.createElement("button"); b.type = "button"; b.className = "key player";
+      var nm = document.createElement("span"); nm.textContent = p.name + (p.s.learned ? " 👑" : "") + (p.s.learnedI ? " 🔥" : "");
+      var info = document.createElement("small"); info.textContent = "Level " + (p.s.level + 1) + " " + L.emoji + " · ⭐ " + p.s.stars;
+      b.appendChild(nm); b.appendChild(info);
+      b.addEventListener("click", function () { choose(p); });
+      var x = document.createElement("button"); x.type = "button"; x.className = "key remove";
+      x.textContent = "✕"; x.setAttribute("aria-label", "Remove " + p.name);
+      x.addEventListener("click", function () {
+        if (armed === p) {
+          armed = null; players.splice(players.indexOf(p), 1); saveLocal();
+          if (cloud.db && cloud.state === "on" && p.id) cloud.db.collection("players").doc(p.id).delete().catch(function () {});
+          showHome();
+        }
+        else { armed = p; showHome(); }
+      });
+      if (armed === p) { x.textContent = "Erase?"; }
+      var rp = document.createElement("button"); rp.type = "button"; rp.className = "key report-btn";
+      rp.textContent = "📊"; rp.setAttribute("aria-label", "Report for " + p.name);
+      rp.addEventListener("click", function () { current = p; state = p.s; armed = null; round = null; showReport(false); });
+      row.appendChild(b); row.appendChild(rp); row.appendChild(x);
+      el.players.appendChild(row);
+    });
+    el.whoLabel.hidden = players.length === 0;
+    el.newLabel.textContent = players.length ? "Or add a new player" : "What is your name?";
+    el.newName.value = "";
+  }
+  function choose(p) {
+    current = p; state = p.s; armed = null;
+    el.home.hidden = true; el.report.hidden = true; el.play.hidden = false;
+    showReady();
+    bump();
+  }
+  el.newForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var name = el.newName.value.replace(/\s+/g, " ").trim().slice(0, 18);
+    if (!name) { el.newName.focus(); return; }
+    var found = players.filter(function (p) { return p.name.toLowerCase() === name.toLowerCase(); })[0];
+    if (!found) { found = { id: newId(), synced: false, name: name, s: freshState() }; players.push(found); saveLocal(); pushPlayer(found); }
+    choose(found);
+  });
+
+  // Leave the round when nobody has pressed a key or tapped for a while.
+  function bump() {
+    clearTimeout(idleTimer);
+    if (phase !== "home") idleTimer = setTimeout(function () {
+      var playing = isPlaying();
+      var who = current.name;
+      finishRound();
+      save();
+      showHome(playing ? who + "'s round stopped after " + (state.big ? "2 minutes" : "45 seconds") + " with no answer. All stars are saved." : "");
+    }, state && state.big ? BIG_IDLE_MS : IDLE_MS);
+  }
+  document.addEventListener("pointerdown", bump);
+  window.addEventListener("scroll", bump, { passive: true });
+  window.addEventListener("wheel", bump, { passive: true });
+  function isPlaying() { return phase === "ask" || phase === "right" || phase === "wrong" || phase === "cheer"; }
+
+  function renderStrip() {
+    var L = LEVELS[state.level];
+    el.level.textContent = "Level " + (state.level + 1) + " · " + L.name + " " + L.emoji;
+    el.stars.textContent = "⭐ " + state.stars;
+    el.streak.textContent = "🔥 " + state.streak;
+    var pct = Math.max(0, Math.min(100, Math.round(state.meter / METER_GOAL * 100)));
+    el.meterFill.style.width = pct + "%";
+    el.meterTrack.setAttribute("aria-valuenow", pct);
+    var next = LEVELS[state.level + 1];
+    el.nextEmoji.textContent = next ? next.emoji : "🏆";
+  }
+  function setFeedback(emoji, msg, sub) {
+    el.emoji.textContent = emoji;
+    el.msg.textContent = msg;
+    el.sub.textContent = sub || "";
+    el.emoji.classList.remove("pop");
+    if (emoji) { void el.emoji.offsetWidth; el.emoji.classList.add("pop"); }
+  }
+  function setPad(enabled) {
+    digitKeys.forEach(function (b) { b.disabled = !enabled; });
+  }
+  function clearTimers() {
+    timers.forEach(clearTimeout); timers = [];
+    clearTimeout(nextTimer); nextTimer = null;
+  }
+
+  function showReady() {
+    phase = "ready";
+    clearTimers();
+    el.card.className = "card";
+    el.timer.classList.add("hidden");
+    el.roundInfo.textContent = "Play as long as you like. Press S to stop.";
+    el.question.textContent = state.count ? "Hi again, " + current.name + "!" : "Hi, " + current.name + "!";
+    el.equals.hidden = true; el.answer.hidden = true;
+    if (!state.learnedI) state.big = false;
+    setFeedback(state.big ? "🧮" : state.insane ? "🔥" : "👋",
+      state.big ? "3-digit mode is on!" : state.insane ? "Insane mode is on!" : "Answer fast to win more stars!",
+      state.big ? "Big problems like 347 × 6. Take your time." : state.insane ? "An answer only counts if it is right within " + (INSANE_MS / 1000) + " seconds." : "");
+    el.problem.classList.remove("big");
+    el.fuse.hidden = true;
+    el.modeBtn.hidden = false; renderMode();
+    el.go.textContent = "Play ▶"; el.go.disabled = false;
+    el.stop.textContent = "Switch player";
+    setPad(false);
+    renderStrip();
+  }
+
+  function startRound() {
+    round = { n: 0, correct: 0, stars: 0, ms: 0, timed: 0, max: 0, items: [], saved: false, insane: state.insane, big: state.big,
+      fast: state.big ? BIG_FAST_MS : FAST_MS, ok: state.big ? BIG_OK_MS : OK_MS };
+    el.modeBtn.hidden = true; el.bigBtn.hidden = true;
+    el.problem.classList.toggle("big", state.big);
+    el.home.hidden = true; el.report.hidden = true; el.play.hidden = false;
+    el.stop.textContent = "Stop (press S)";
+    startMusic();
+    countdown();
+    bump();
+  }
+
+  // ---------- Music ----------
+  // Two original chiptune loops made with the browser's sound generator: a sunny one for
+  // normal rounds and a faster, low and tense one for insane mode. Each string is one bar
+  // of eight notes; "-" is a rest.
+  var TUNES = {
+    normal: { bpm: 104, lead: "square", leadVol: 0.035, bassVol: 0.07,
+      lead_: ["E5 G5 - E5 C5 - D5 E5", "C5 E5 - A4 C5 - - -", "F5 A5 - F5 C5 - D5 F5", "D5 G5 - B4 D5 - - -"],
+      bass_: ["C3 - C3 - G2 - C3 -", "A2 - A2 - E2 - A2 -", "F2 - F2 - C3 - F2 -", "G2 - G2 - D3 - G2 -"] },
+    insane: { bpm: 152, lead: "sawtooth", leadVol: 0.03, bassVol: 0.09,
+      lead_: ["A4 - - C5 - E5 - -", "G4 - - B4 - D5 - -", "F4 - - A4 - C5 - E5", "E5 - D5 - B4 - G#4 -"],
+      bass_: ["A2 A2 C3 A2 E3 A2 D3 C3", "G2 G2 B2 G2 D3 G2 C3 B2", "F2 F2 A2 F2 C3 F2 E3 D3", "E2 E2 G#2 E2 B2 E2 D3 E3"] }
+  };
+  var SEMI = { C: 0, "C#": 1, D: 2, "D#": 3, E: 4, F: 5, "F#": 6, G: 7, "G#": 8, A: 9, "A#": 10, B: 11 };
+  function hz(n) { var m = /^([A-G]#?)(\d)$/.exec(n); return 440 * Math.pow(2, (SEMI[m[1]] + (m[2] - 4) * 12 - 9) / 12); }
+  Object.keys(TUNES).forEach(function (k) {
+    var t = TUNES[k];
+    t.leadSeq = t.lead_.join(" ").split(" "); t.bassSeq = t.bass_.join(" ").split(" ");
+    t.stepDur = 60 / t.bpm / 2;
+  });
+  var MUSIC_KEY = "times-table-stars-music";
+  var music = { on: true, ctx: null, timer: null, tune: null, step: 0, next: 0 };
+  try { music.on = localStorage.getItem(MUSIC_KEY) !== "off"; } catch (e) {}
+
+  function note(f, at, dur, type, vol) {
+    var o = music.ctx.createOscillator(), g = music.ctx.createGain();
+    o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(vol, at);
+    g.gain.exponentialRampToValueAtTime(0.0008, at + dur);
+    o.connect(g); g.connect(music.ctx.destination);
+    o.start(at); o.stop(at + dur + 0.02);
+  }
+  function scheduleMusic() {
+    var t = music.tune;
+    while (music.next < music.ctx.currentTime + 0.25) {
+      var l = t.leadSeq[music.step], b = t.bassSeq[music.step];
+      if (l !== "-") note(hz(l), music.next, t.stepDur * 0.9, t.lead, t.leadVol);
+      if (b !== "-") note(hz(b), music.next, t.stepDur * 0.8, "triangle", t.bassVol);
+      music.next += t.stepDur;
+      music.step = (music.step + 1) % t.leadSeq.length;
+    }
+  }
+  // Must be called from a tap or key press, or the browser refuses to play sound.
+  function startMusic() {
+    stopMusic();
+    if (!music.on || !state) return;
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!music.ctx) music.ctx = new AC();
+      if (music.ctx.state === "suspended") music.ctx.resume();
+      music.tune = TUNES[state.insane ? "insane" : "normal"];
+      music.step = 0; music.next = music.ctx.currentTime + 0.06;
+      music.timer = setInterval(scheduleMusic, 60);
+      scheduleMusic();
+    } catch (e) { stopMusic(); }
+  }
+  function stopMusic() { clearInterval(music.timer); music.timer = null; }
+  function renderMusic() {
+    el.musicBtn.textContent = music.on ? "🔊" : "🔇";
+    el.musicBtn.setAttribute("aria-pressed", music.on ? "false" : "true");
+    el.musicBtn.setAttribute("aria-label", music.on ? "Mute music" : "Turn music on");
+    el.musicBtn.title = music.on ? "Mute music" : "Turn music on";
+  }
+  el.musicBtn.addEventListener("click", function () {
+    music.on = !music.on;
+    try { localStorage.setItem(MUSIC_KEY, music.on ? "on" : "off"); } catch (e) {}
+    renderMusic();
+    if (music.on && (isPlaying() || phase === "count")) startMusic(); else stopMusic();
+  });
+  renderMusic();
+
+  // 3, 2, 1, Go! before the first question so the player can get ready.
+  function countdown() {
+    phase = "count";
+    clearTimers();
+    el.card.className = "card";
+    el.timer.classList.add("hidden"); el.fuse.hidden = true;
+    el.roundInfo.textContent = (state.insane ? "🔥 " : "") + current.name + " · Get ready";
+    el.equals.hidden = true; el.answer.hidden = true;
+    setFeedback("", "", "");
+    el.go.textContent = "…"; el.go.disabled = true;
+    setPad(false);
+    renderStrip();
+    var steps = ["3", "2", "1", "Go!"];
+    (function tick(i) {
+      if (i === steps.length) { ask(); return; }
+      el.question.textContent = steps[i];
+      el.question.classList.remove("pop"); void el.question.offsetWidth; el.question.classList.add("pop");
+      nextTimer = setTimeout(function () { tick(i + 1); }, i === steps.length - 1 ? 500 : 750);
+    })(0);
+  }
+
+  // Store the round's speed in the player's history (once per round).
+  function finishRound() {
+    if (!round || round.saved || round.n === 0) return;
+    round.saved = true;
+    if (round.timed && !round.big) {
+      state.hist.push({ avg: Math.round(round.ms / round.timed), max: Math.round(round.max), ok: round.correct, n: round.n, i: round.insane ? 1 : 0, d: Date.now() });
+      if (state.hist.length > 60) state.hist.shift();
+    }
+    save();
+  }
+
+  // ---------- Report ----------
+  function node(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function svg(tag, attrs, text) {
+    var n = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function secs(ms) { return (ms / 1000).toFixed(1) + " s"; }
+
+  function renderMode() {
+    [el.modeBtn, el.modeBtn2].forEach(function (b) {
+      b.textContent = "🔥 Insane mode: " + (state.insane ? "ON" : "OFF");
+      b.setAttribute("aria-pressed", state.insane ? "true" : "false");
+    });
+    // 3-digit mode unlocks once every fact has been starred in insane mode.
+    [el.bigBtn, el.bigBtn2].forEach(function (b) {
+      b.textContent = "🧮 3-digit mode: " + (state.big ? "ON" : "OFF");
+      b.setAttribute("aria-pressed", state.big ? "true" : "false");
+    });
+    el.bigBtn2.hidden = !state.learnedI;
+    el.bigBtn.hidden = !state.learnedI || phase !== "ready";
+  }
+  function toggleMode(which) {
+    if (which === "big") { state.big = !state.big && state.learnedI; if (state.big) state.insane = false; }
+    else { state.insane = !state.insane; if (state.insane) state.big = false; }
+    save();
+    if (phase === "report") showReport(lastStopped, true); else showReady();
+  }
+  el.modeBtn.addEventListener("click", function () { toggleMode("insane"); });
+  el.modeBtn2.addEventListener("click", function () { toggleMode("insane"); });
+  el.bigBtn.addEventListener("click", function () { toggleMode("big"); });
+  el.bigBtn2.addEventListener("click", function () { toggleMode("big"); });
+
+  var lastStopped = false;
+  function showReport(stoppedEarly, keepScroll) {
+    lastStopped = !!stoppedEarly;
+    stopMusic();
+    renderMode();
+    finishRound();
+    phase = "report";
+    clearTimers();
+    bump();
+    el.home.hidden = true; el.play.hidden = true; el.report.hidden = false;
+    var who = current.name, body = el.reportBody;
+    body.textContent = "";
+
+    if (round && round.n) {
+      var share = round.correct / round.n;
+      var head = share === 1 ? "🏆 Perfect round, " + who + "!"
+        : share >= 0.8 ? "🎉 Great round, " + who + "!"
+        : share >= 0.5 ? "👍 Good practice, " + who + "!"
+        : "💪 Keep going, " + who + "!";
+      body.appendChild(node("h1", "report-title", head));
+      var line = (round.big ? "🧮 3-digit mode. " : round.insane ? "🔥 Insane mode. " : "") + (stoppedEarly ? "Round stopped early. " : "") + round.correct + " of " + round.n + " correct · +" + round.stars + " ⭐";
+      if (round.timed) line += " · average " + secs(round.ms / round.timed) + " · slowest " + secs(round.max);
+      body.appendChild(node("p", "report-line", line));
+    } else {
+      body.appendChild(node("h1", "report-title", who + "'s report"));
+      body.appendChild(node("p", "report-line", "Level " + (state.level + 1) + " " + LEVELS[state.level].emoji + " · ⭐ " + state.stars + " · " + state.hist.length + " rounds played"));
+    }
+
+    if (allLearned(state)) {
+      var cheer = node("section", "panel cheer");
+      cheer.appendChild(node("h2", "", state.insane ? "🔥 " + who + " has beaten insane mode!" : "🏆 " + who + " has learned the multiplication table!"));
+      cheer.appendChild(node("p", "", "Every fact on the 10 × 10 chart was answered correctly 3 times in a row" + (state.insane ? ", each within 5 seconds. 3-digit mode is now unlocked." : ".")));
+      body.appendChild(cheer);
+    }
+
+    if (round && round.n) body.appendChild(roundPanel());
+    var tables = tablesPanel(); if (tables) body.appendChild(tables);
+    body.appendChild(speedPanel());
+    body.appendChild(chartPanel());
+
+    el.againBtn.textContent = (round && round.n ? "Play again as " : "Play as ") + who + " ▶";
+    if (!keepScroll) window.scrollTo(0, 0);
+  }
+
+  // What went well and what did not, in the round just played.
+  function roundPanel() {
+    var byKey = {}, order = [];
+    round.items.forEach(function (it) {
+      var k = keyOf(it.a, it.b);
+      if (!byKey[k]) { byKey[k] = { a: it.a, b: it.b, missed: false, given: [], slow: 0, fast: null }; order.push(k); }
+      var r = byKey[k];
+      if (!it.ok) { r.missed = true; if (it.late) r.late = Math.max(r.late || 0, it.ms || 1); else if (it.given !== "" && r.given.indexOf(it.given) === -1) r.given.push(it.given); }
+      else if (it.ms != null && it.ms > round.ok) r.slow = Math.max(r.slow, it.ms);
+      else if (it.ms != null && it.ms <= round.fast) r.fast = r.fast == null ? it.ms : Math.min(r.fast, it.ms);
+    });
+    var well = [], wrong = [], slow = [], late = [];
+    order.forEach(function (k) {
+      var r = byKey[k], q = r.a + " × " + r.b;
+      if (r.missed && r.given.length) wrong.push(q + " = " + (r.a * r.b) + " · answered " + r.given.join(", "));
+      else if (r.missed) late.push(q + " = " + (r.a * r.b));
+      else if (r.slow) slow.push(q + " = " + (r.a * r.b) + " · " + secs(r.slow));
+      else if (r.fast != null) well.push(q + " · " + secs(r.fast));
+    });
+    var p = node("section", "panel");
+    p.appendChild(node("h2", "", "This round"));
+    p.appendChild(node("h3", "", "Going well 🌟"));
+    p.appendChild(node("p", "", "Right, and in " + (round.fast / 1000) + " seconds or less."));
+    p.appendChild(chipList(well, "well", "No quick answers this round. Speed comes with practice."));
+    p.appendChild(node("h3", "", "Incorrect ❌"));
+    p.appendChild(node("p", "", "The answer given was wrong."));
+    p.appendChild(chipList(wrong, "work", "None. Every answer was right!"));
+    if (round.insane) {
+      p.appendChild(node("h3", "", "Out of time ⏰"));
+      p.appendChild(node("p", "", "No answer within " + (INSANE_MS / 1000) + " seconds, so it did not count."));
+      p.appendChild(chipList(late, "slow", "None. Every answer beat the clock!"));
+    } else {
+      p.appendChild(node("h3", "", "Right, but slow 🐢"));
+      p.appendChild(node("p", "", "Correct, but took longer than " + (round.ok / 1000) + " seconds."));
+      p.appendChild(chipList(slow, "slow", "None. No answer took that long."));
+    }
+    return p;
+  }
+  function chipList(items, cls, empty) {
+    if (!items.length) return node("p", "strong", empty);
+    var box = node("div", "chips");
+    items.forEach(function (t) { box.appendChild(node("span", "fact " + cls, t)); });
+    return box;
+  }
+
+  // Strongest and trickiest table across everything this player has answered.
+  function tablesPanel() {
+    var rows = [];
+    for (var t = 2; t <= 10; t++) {
+      var n = 0, r = 0, time = 0, timed = 0;
+      for (var o = 2; o <= 10; o++) {
+        [keyOf(t, o), keyOf(o, t)].forEach(function (k, i) {
+          var rec = facts(state)[k];
+          if (!rec || (i === 1 && o === t)) return;
+          n += rec.n; r += rec.r;
+          if (rec.t) { time += rec.t; timed++; }
+        });
+      }
+      if (n >= 4) rows.push({ t: t, n: n, r: r, acc: r / n, time: timed ? time / timed : 0 });
+    }
+    if (rows.length < 2) return null;
+    rows.sort(function (x, y) { return (y.acc - x.acc) || (x.time - y.time); });
+    var best = rows[0], worst = rows[rows.length - 1];
+    function say(x) { return "×" + x.t + " table: " + x.r + " of " + x.n + " right" + (x.time ? ", about " + secs(x.time) + " each" : ""); }
+    var p = node("section", "panel");
+    p.appendChild(node("h2", "", "Tables so far"));
+    p.appendChild(node("p", "strong", "🌟 Strongest is the " + say(best) + "."));
+    p.appendChild(node("p", "strong", "💪 Trickiest is the " + say(worst) + "."));
+    return p;
+  }
+
+  // Line chart: average and slowest answer time for each round.
+  function speedPanel() {
+    var p = node("section", "panel");
+    p.appendChild(node("h2", "", current.name + "'s answer time by round"));
+    var all = state.hist, data = all.slice(-12), first = all.length - data.length + 1;
+    if (!data.length) {
+      p.appendChild(node("p", "", "Finish a round to see average and slowest answer times here."));
+      return p;
+    }
+    var legend = node("div", "legend");
+    [["Average", "var(--series-1)"], ["Slowest", "var(--series-2)"]].forEach(function (l) {
+      var item = node("span"), sw = node("i", "swatch");
+      sw.style.background = l[1];
+      item.appendChild(sw); item.appendChild(document.createTextNode(l[0]));
+      legend.appendChild(item);
+    });
+    p.appendChild(legend);
+
+    var W = 400, H = 210, L = 38, R = 66, T = 14, B = 30;
+    var top = Math.max.apply(null, data.map(function (d) { return d.max; })) / 1000;
+    var yMax = [2, 4, 6, 8, 10, 16, 20, 30, 40, 50].filter(function (v) { return v >= top; })[0] || 60;
+    function X(i) { return data.length === 1 ? (L + W - R) / 2 : L + i * (W - L - R) / (data.length - 1); }
+    function Y(ms) { return T + (1 - ms / 1000 / yMax) * (H - T - B); }
+    var c = svg("svg", { viewBox: "0 0 " + W + " " + H, "class": "chart", role: "img",
+      "aria-label": "Line chart of average and slowest answer time in seconds for each round" });
+    [0, yMax / 2, yMax].forEach(function (v) {
+      var y = Y(v * 1000);
+      c.appendChild(svg("line", { x1: L, x2: W - R, y1: y, y2: y, stroke: "var(--grid)", "stroke-width": 1 }));
+      c.appendChild(svg("text", { x: L - 6, y: y + 4, "text-anchor": "end" }, v + " s"));
+    });
+    var step = data.length > 8 ? 2 : 1;
+    data.forEach(function (d, i) {
+      if ((data.length - 1 - i) % step === 0) c.appendChild(svg("text", { x: X(i), y: H - 10, "text-anchor": "middle" }, String(first + i)));
+    });
+    c.appendChild(svg("text", { x: W - R + 10, y: H - 10 }, "round"));
+    var guide = svg("line", { x1: 0, x2: 0, y1: T, y2: H - B, stroke: "var(--muted)", "stroke-width": 1, "stroke-dasharray": "3 3", visibility: "hidden" });
+    c.appendChild(guide);
+    [["max", "var(--series-2)"], ["avg", "var(--series-1)"]].forEach(function (sr) {
+      if (data.length > 1) c.appendChild(svg("polyline", {
+        points: data.map(function (d, i) { return X(i) + "," + Y(d[sr[0]]); }).join(" "),
+        fill: "none", stroke: sr[1], "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+      data.forEach(function (d, i) {
+        c.appendChild(svg("circle", { cx: X(i), cy: Y(d[sr[0]]), r: 4, fill: sr[1], stroke: "var(--card)", "stroke-width": 2 }));
+      });
+    });
+    var lastD = data[data.length - 1], lx = X(data.length - 1) + 9;
+    var ya = Y(lastD.avg) + 4, ys = Math.min(Y(lastD.max) + 4, ya - 14);
+    c.appendChild(svg("text", { x: lx, y: ys, "class": "end" }, "Slowest"));
+    c.appendChild(svg("text", { x: lx, y: ya, "class": "end" }, "Average"));
+
+    var readout = node("div", "readout");
+    function show(i) {
+      var d = data[i];
+      readout.textContent = "Round " + (first + i) + ": average " + secs(d.avg) + ", slowest " + secs(d.max) + ", " + d.ok + " of " + d.n + " right" + (d.i ? " (insane mode)" : "");
+      guide.setAttribute("x1", X(i)); guide.setAttribute("x2", X(i)); guide.setAttribute("visibility", "visible");
+    }
+    var colW = data.length === 1 ? W - L - R : (W - L - R) / (data.length - 1);
+    data.forEach(function (d, i) {
+      var hit = svg("rect", { x: X(i) - colW / 2, y: T, width: colW, height: H - T - B, "class": "hit", tabindex: 0,
+        "aria-label": "Round " + (first + i) });
+      ["pointerenter", "focus", "click"].forEach(function (ev) { hit.addEventListener(ev, function () { show(i); }); });
+      c.appendChild(hit);
+    });
+    p.appendChild(c);
+    p.appendChild(readout);
+    show(data.length - 1);
+
+    var det = node("details", "numbers");
+    det.appendChild(node("summary", "", "Show the numbers"));
+    var tb = node("table"), hr = node("tr");
+    ["Round", "Average", "Slowest", "Right"].forEach(function (h) { hr.appendChild(node("th", "", h)); });
+    tb.appendChild(hr);
+    data.forEach(function (d, i) {
+      var tr = node("tr");
+      [String(first + i), secs(d.avg), secs(d.max), d.ok + " of " + d.n].forEach(function (v) { tr.appendChild(node("td", "", v)); });
+      tb.appendChild(tr);
+    });
+    det.appendChild(tb);
+    p.appendChild(det);
+    return p;
+  }
+
+  // The 10 × 10 chart, marked by how well each fact is known.
+  function chartPanel() {
+    var p = node("section", "panel"), got = learnedCount(state);
+    p.appendChild(node("h2", "", state.insane ? "Multiplication chart 🔥 insane mode" : "Multiplication chart"));
+    p.appendChild(node("p", "strong", got + " of " + CHART_FACTS + " facts learned. A fact is learned after 3 right answers in a row" + (state.insane ? ", each within 5 seconds." : ".")));
+    var bar = node("div", "bar"), fill = node("div");
+    fill.style.width = Math.round(got / CHART_FACTS * 100) + "%";
+    bar.appendChild(fill); p.appendChild(bar);
+    var g = node("div", "grid10"), detail = node("div", "readout"), picked = null;
+    detail.textContent = "Tap a square to see its answer time.";
+    g.appendChild(node("div", "head", "×"));
+    for (var h = 1; h <= 10; h++) g.appendChild(node("div", "head", String(h)));
+    for (var a = 1; a <= 10; a++) {
+      g.appendChild(node("div", "head", String(a)));
+      for (var b = 1; b <= 10; b++) g.appendChild(cellFor(a, b));
+    }
+    function cellFor(a, b) {
+      var rec = facts(state)[keyOf(a, b)], mark = "", what = "not tried yet", cls = "cell";
+      if (rec && rec.c >= 3) { mark = "★"; what = "learned"; }
+      else if (rec && rec.c > 0) { mark = "✓"; what = rec.c + " right in a row"; }
+      else if (rec && rec.n > 0) { cls += " work"; mark = "!"; what = "needs practice"; }
+      // Yellow for learned, green for on the way. Shade by typical answer time: bright is fast, dark is slow.
+      var t = rec && rec.t ? rec.t : 0;
+      var step = !t ? 0 : t <= 2000 ? 5 : t <= 3000 ? 4 : t <= 5000 ? 3 : t <= 8000 ? 2 : 1;
+      if (rec && rec.c >= 3) cls += " y" + step; else if (rec && rec.c > 0) cls += " g" + step;
+      var cell = node("button", cls, mark);
+      cell.type = "button";
+      var text = a + " × " + b + " = " + (a * b) + ": " + what
+        + (t ? ", usually about " + secs(t) : rec && rec.n ? ", no time yet" : "")
+        + (rec && rec.n ? ", " + rec.r + " of " + rec.n + " right" : "");
+      cell.title = text; cell.setAttribute("aria-label", text);
+      cell.addEventListener("click", function () {
+        if (picked) picked.classList.remove("sel");
+        picked = cell; cell.classList.add("sel");
+        detail.textContent = text;
+      });
+      return cell;
+    }
+    p.appendChild(g);
+    [["y", "★ learned"], ["g", "✓ on the way"]].forEach(function (row) {
+      var key = node("div", "heat-key");
+      key.appendChild(node("span", "", "Slow"));
+      ["over 8 s", "8 s or less", "5 s or less", "3 s or less", "2 s or less"].forEach(function (label, i) {
+        var sw = node("i"); sw.style.background = "var(--" + row[0] + (i + 1) + ")"; sw.title = label;
+        key.appendChild(sw);
+      });
+      key.appendChild(node("span", "", "Fast · " + row[1]));
+      p.appendChild(key);
+    });
+    p.appendChild(node("p", "", "Dark to bright: over 8 s, up to 8 s, up to 5 s, up to 3 s, up to 2 s."));
+    p.appendChild(detail);
+    p.appendChild(node("p", "", "! on red needs practice · blank not tried yet"));
+    return p;
+  }
+
+  function ask() {
+    phase = "ask";
+    clearTimers();
+    fact = pickFact(state);
+    typed = ""; untimed = false;
+    el.card.className = "card";
+    el.roundInfo.textContent = (state.big ? "🧮 " : state.insane ? "🔥 " : "") + current.name + " · Question " + (round.n + 1);
+    el.question.classList.remove("pop");
+    el.question.textContent = fact.a + " × " + fact.b;
+    el.equals.hidden = false; el.answer.hidden = false;
+    el.answer.textContent = "";
+    setFeedback("", "", "");
+    var stars = el.timer.children;
+    for (var i = 0; i < stars.length; i++) stars[i].classList.remove("gone");
+    if (state.insane) {
+      // A fuse that burns down in 5 seconds; when it is gone the question is over.
+      el.timer.classList.add("hidden");
+      el.fuse.hidden = false;
+      var f = el.fuse.firstElementChild;
+      f.style.transition = "none"; f.style.width = "100%";
+      void f.offsetWidth;
+      f.style.transition = "width " + INSANE_MS + "ms linear"; f.style.width = "0%";
+      timers.push(setTimeout(function () { check(true); }, INSANE_MS));
+    } else {
+      el.fuse.hidden = true;
+      el.timer.classList.remove("hidden");
+      timers.push(setTimeout(function () { stars[2].classList.add("gone"); }, round.fast));
+      timers.push(setTimeout(function () { stars[1].classList.add("gone"); }, round.ok));
+    }
+    el.go.textContent = "Check ✓"; el.go.disabled = true;
+    setPad(true);
+    renderStrip();
+    t0 = performance.now();
+  }
+
+  function check(timeUp) {
+    timeUp = timeUp === true;
+    if (phase !== "ask" || (!timeUp && typed === "")) return;
+    var ms = performance.now() - t0;
+    if (state.insane && ms > INSANE_MS) timeUp = true;
+    // When the fuse runs out, whatever is on the screen is the answer: if it is right, it counts.
+    if (timeUp && typed !== "" && parseInt(typed, 10) === fact.a * fact.b) { timeUp = false; ms = INSANE_MS; }
+    clearTimers();
+    setPad(false);
+    if (state.insane) {
+      var fz = el.fuse.firstElementChild, wNow = getComputedStyle(fz).width;
+      fz.style.transition = "none"; fz.style.width = wNow;
+    }
+    var result = grade(state, fact, timeUp ? NaN : parseInt(typed, 10), ms, untimed);
+    round.n += 1;
+    if (result.correct) { round.correct += 1; round.stars += result.stars; }
+    if (!untimed) { round.ms += ms; round.timed += 1; round.max = Math.max(round.max, ms); }
+    round.items.push({ a: fact.a, b: fact.b, ok: result.correct, ms: untimed ? null : ms, given: typed, late: timeUp });
+    var last = !!result.learned;
+    if (last) round.done = true;
+    save();
+    renderStrip();
+    var secs = (ms / 1000).toFixed(1) + " seconds";
+    var L = LEVELS[state.level];
+
+    if (result.learned) {
+      phase = "cheer";
+      el.card.className = "card right";
+      setFeedback(state.insane ? "🔥" : "🏆", state.insane ? "You beat insane mode!" : "You learned the whole multiplication table!",
+        "Every fact, 3 times in a row" + (state.insane ? ", each in 5 seconds. 3-digit mode is unlocked" : "") + ". Amazing, " + current.name + "!");
+      burst();
+      el.go.textContent = last ? "Finish ▶" : "Keep going ▶"; el.go.disabled = false;
+    } else if (result.correct) {
+      phase = "right";
+      el.card.className = "card right";
+      var m = rand(MSG[result.stars]);
+      var streakMsg = STREAK_MSG[state.streak];
+      var msg = streakMsg ? streakMsg + " 🔥" : m[1];
+      var sub = "+" + result.stars + " ⭐" + (untimed ? "" : " · " + secs);
+      var wait = 1100;
+      if (result.change === "up") {
+        setFeedback(L.emoji, "Level " + (state.level + 1) + "! You made " + L.name + "!", L.tables.length ? "New facts unlocked: ×" + L.tables.join(" and ×") : (state.level === LEVELS.length - 1 ? "Top level! Every table, all mixed up." : "Mix-up level! All your tables together."));
+        burst();
+        wait = 2600;
+      } else {
+        setFeedback(m[0], msg, sub);
+        if (streakMsg) wait = 1500;
+      }
+      el.go.textContent = "…"; el.go.disabled = true;
+      nextTimer = setTimeout(last ? function () { showReport(false); } : ask, wait);
+    } else {
+      phase = "wrong";
+      el.card.className = "card wrong";
+      el.timer.classList.add("hidden");
+      var w = timeUp ? ["⏰", "Time's up!"] : rand(MSG[0]);
+      setFeedback(w[0], w[1] + " " + fact.a + " × " + fact.b + " = " + (fact.a * fact.b),
+        result.change === "down" ? "Let's practice some easier ones for a bit 🌱" : state.big ? "Big ones are tough. Keep going!" : "We'll try this one again soon.");
+      el.go.textContent = last ? "Finish ▶" : "Next ▶"; el.go.disabled = false;
+    }
+  }
+
+  function burst() {
+    var bits = ["🎉", "⭐", "🚀", "✨", "🎈", "🌟"];
+    el.burst.textContent = "";
+    for (var i = 0; i < 16; i++) {
+      var sp = document.createElement("span");
+      var ang = (Math.PI * 2 * i) / 16 + Math.random() * 0.4;
+      var dist = 110 + Math.random() * 90;
+      sp.textContent = bits[i % bits.length];
+      sp.style.setProperty("--dx", Math.round(Math.cos(ang) * dist) + "px");
+      sp.style.setProperty("--dy", Math.round(Math.sin(ang) * dist) + "px");
+      sp.style.setProperty("--rot", Math.round(Math.random() * 360 - 180) + "deg");
+      el.burst.appendChild(sp);
+    }
+    setTimeout(function () { el.burst.textContent = ""; }, 1500);
+  }
+
+  function press(k) {
+    if (phase !== "ask") return;
+    if (k === "back") typed = typed.slice(0, -1);
+    else if (typed.length < (state.big ? 4 : 3)) typed = typed === "0" ? k : typed + k;
+    el.answer.textContent = typed;
+    el.go.disabled = typed === "";
+  }
+  function go() {
+    if (phase === "ready" || phase === "report") startRound();
+    else if (phase === "wrong" || phase === "cheer") { if (round.done) showReport(false); else ask(); }
+    else if (phase === "ask") check();
+  }
+
+  el.pad.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-k]");
+    if (b && !b.disabled) press(b.getAttribute("data-k"));
+  });
+  el.go.addEventListener("click", function () { go(); });
+  document.addEventListener("keydown", function (e) {
+    if (phase === "home" || e.metaKey || e.ctrlKey || e.altKey) return;
+    bump();
+    if (e.key >= "0" && e.key <= "9" && e.key.length === 1) { press(e.key); e.preventDefault(); }
+    else if (e.key === "Backspace") { press("back"); e.preventDefault(); }
+    else if (e.key === "Enter") { go(); e.preventDefault(); }
+    else if ((e.key === "s" || e.key === "S") && (isPlaying() || phase === "count")) { el.stop.click(); e.preventDefault(); }
+  });
+  // Looking away mid-question should not count as being slow.
+  document.addEventListener("visibilitychange", function () {
+    if (music.ctx) { try { if (document.hidden) music.ctx.suspend(); else music.ctx.resume(); } catch (e) {} }
+    if (document.hidden && phase === "ask") { untimed = true; timers.forEach(clearTimeout); timers = []; }
+    // Insane mode cannot be timed fairly after looking away, so that question is swapped for a new one.
+    else if (!document.hidden && phase === "ask" && untimed && state.insane) ask();
+  });
+  var STOP_LOCK_MS = 2000; // insane mode: no stopping once this little time is left on a question
+  el.stop.addEventListener("click", function () {
+    if (phase === "ask" && state.insane && !untimed && performance.now() - t0 >= INSANE_MS - STOP_LOCK_MS) {
+      el.sub.textContent = "Too late to stop. Answer this one first!";
+      return;
+    }
+    if (isPlaying() && round.n > 0) showReport(false);
+    else showHome();
+  });
+  el.againBtn.addEventListener("click", startRound);
+  el.switchBtn.addEventListener("click", function () { showHome(); });
+
+  function start() {
+    players = load();
+    showHome();
+    if (CLOUD_ON) connectCloud(); else cloud.state = "off";
+  }
+  var hot = window.claude && window.claude.hot;
+  if (hot && hot.ready) hot.ready(start); else start();
+
+  // Exposed for a quick logic check only.
+  window.__tts = { pickFact: pickFact, grade: grade, freshState: freshState, LEVELS: LEVELS, learnedCount: learnedCount };
+})();
+</script>
+</body>
+</html>
