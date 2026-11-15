@@ -271,6 +271,23 @@ body {
 .fuse { width: 70%; height: 12px; border: 2px solid var(--ink); border-radius: 999px; overflow: hidden; background: var(--card); margin: 8px 0; }
 .fuse i { display: block; height: 100%; width: 100%; background: var(--miss); }
 
+/* Recovery words */
+.word-pick { display: flex; flex-wrap: wrap; gap: 8px; }
+.word-pick .word {
+  font: inherit; font-size: 18px; font-weight: 700; color: var(--ink); cursor: pointer;
+  background: var(--card); border: 2px solid var(--grid); border-radius: 999px; padding: 6px 14px;
+}
+.word-pick .word[aria-checked="true"] { border-color: var(--accent); background: var(--paper); box-shadow: 0 0 0 2px var(--accent); }
+.word-pick .word:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+#wordsNote:empty, #recStatus:empty { display: none; }
+
+/* Between levels */
+.level-card { position: relative; text-align: center; gap: 10px; padding: 22px 18px; min-height: 0; flex: 0 0 auto; margin-top: 8vh; }
+#ldStop { width: 100%; font-size: 22px; min-height: 52px; }
+.ld-emoji { font-size: 64px; line-height: 1; }
+.ld-stats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 18px; }
+.ld-next { margin: 0; color: var(--muted); font-size: 16px; }
+
 /* Leaderboard */
 .lb-open { font-size: 22px; padding: 10px 16px 6px; }
 .lb-grid .cell { font-size: 17px; }
@@ -343,7 +360,42 @@ body {
     </div>
   </form>
   <button class="key lb-open" type="button" id="boardOpen" hidden>🏆 Leaderboard</button>
-  <p class="cloud" id="cloud"></p>
+  <button class="link" type="button" id="recoverOpen" hidden>I already have a leaderboard name</button>
+</main>
+
+<main class="game" id="recover" hidden>
+  <h1 class="report-title">Bring a player back</h1>
+  <p class="report-line">Enter the leaderboard nickname and pick the two recovery words chosen when the player joined. Their stars, levels and charts come back on this device.</p>
+  <section class="panel">
+    <h2><label for="recNick">Leaderboard nickname</label></h2>
+    <input class="nick-input" id="recNick" type="text" maxlength="18" autocomplete="off" spellcheck="false" autocapitalize="words">
+  </section>
+  <section class="panel">
+    <h2>First recovery word</h2>
+    <div class="word-pick" id="recAdj" role="radiogroup" aria-label="First recovery word"></div>
+    <h2>Second recovery word</h2>
+    <div class="word-pick" id="recAnimal" role="radiogroup" aria-label="Second recovery word"></div>
+  </section>
+  <p class="nick-status" id="recStatus" aria-live="polite"></p>
+  <div class="report-actions">
+    <button class="key go" type="button" id="recGo" disabled>Bring my player back ▶</button>
+    <button class="link" type="button" id="recCancel">Cancel</button>
+  </div>
+</main>
+
+<main class="game" id="levelDone" hidden>
+  <section class="card level-card">
+    <div class="ld-emoji" id="ldEmoji">🌱</div>
+    <h1 class="report-title" id="ldTitle">Level 2!</h1>
+    <p class="report-line" id="ldNew"></p>
+    <ul class="ld-stats" id="ldStats"></ul>
+    <p class="ld-next" id="ldNext"></p>
+    <div class="burst" id="ldBurst" aria-hidden="true"></div>
+  </section>
+  <div class="report-actions">
+    <button class="key go" type="button" id="ldGo">Continue ▶ (Enter)</button>
+    <button class="key" type="button" id="ldStop">Stop playing (S)</button>
+  </div>
 </main>
 
 <main class="game" id="board" hidden>
@@ -366,15 +418,22 @@ body {
 <main class="game" id="join" hidden>
   <h1 class="report-title" id="joinTitle">Join the leaderboard</h1>
   <p class="report-line" id="joinIntro">Pick an emoji and a nickname. Everyone who opens the game will see them, so don't use your real full name.</p>
-  <section class="panel">
+  <section class="panel" id="emojiPanel">
     <h2>Your emoji</h2>
     <div class="emoji-pick" id="emojiPick" role="radiogroup" aria-label="Choose your emoji"></div>
     <p id="emojiNote">Grey ones are already taken.</p>
   </section>
-  <section class="panel">
+  <section class="panel" id="nickPanel">
     <h2><label for="nickInput">Your public nickname</label></h2>
     <input class="nick-input" id="nickInput" type="text" maxlength="18" autocomplete="off" spellcheck="false" autocapitalize="words" placeholder="For example: Speedy Sam">
     <p class="nick-status" id="nickStatus" aria-live="polite"></p>
+  </section>
+  <section class="panel" id="wordsPanel">
+    <h2>Your recovery words</h2>
+    <p>Pick one word from each row. Only you see them. With your nickname, they bring this player back if you change devices.</p>
+    <div class="word-pick" id="adjPick" role="radiogroup" aria-label="First recovery word"></div>
+    <div class="word-pick" id="animalPick" role="radiogroup" aria-label="Second recovery word"></div>
+    <p class="nick-status ok" id="wordsNote" aria-live="polite"></p>
   </section>
   <div class="report-actions">
     <button class="key go" type="button" id="joinSave" disabled>Join ▶</button>
@@ -402,7 +461,7 @@ body {
     </div>
   </div>
   <div class="meter">
-    <span>Next level</span>
+    <span id="meterLabel">Next level</span>
     <div class="meter-track" role="progressbar" aria-label="Progress to next level" aria-valuemin="0" aria-valuemax="100" id="meterTrack">
       <div class="meter-fill" id="meterFill"></div>
     </div>
@@ -471,8 +530,52 @@ body {
     { name: "Wizard",       emoji: "🧙", tables: [8] },
     { name: "Dragon Tamer", emoji: "🐉", tables: [] },
     { name: "Superhero",    emoji: "🦸", tables: [], tough: true }, // tough middle of the chart most
-    { name: "Champion",     emoji: "🏅", tables: [], tough: true }
+    { name: "Champion",     emoji: "🏅", tables: [], tough: true },
+    { name: "Comet Chaser",     emoji: "☄️", tables: [], tough: true },
+    { name: "Volcano Jumper",   emoji: "🌋", tables: [], tough: true },
+    { name: "Treasure Hunter",  emoji: "💎", tables: [], tough: true },
+    { name: "Kite Flyer",       emoji: "🪁", tables: [], tough: true },
+    { name: "Ocean Explorer",   emoji: "🌊", tables: [], tough: true },
+    { name: "Mountain King",    emoji: "⛰️", tables: [], tough: true },
+    { name: "Storm Rider",      emoji: "⚡", tables: [], tough: true },
+    { name: "Time Traveler",    emoji: "⏳", tables: [], tough: true },
+    { name: "Robot Builder",    emoji: "🤖", tables: [], tough: true },
+    { name: "Star Gazer",       emoji: "🔭", tables: [], tough: true },
+    { name: "Moon Walker",      emoji: "🌙", tables: [], tough: true },
+    { name: "Galaxy Guide",     emoji: "🌌", tables: [], tough: true },
+    { name: "Thunder Hero",     emoji: "🌩️", tables: [], tough: true },
+    { name: "Crystal Keeper",   emoji: "🔮", tables: [], tough: true },
+    { name: "Castle Guard",     emoji: "🏰", tables: [], tough: true },
+    { name: "Balloon Pilot",    emoji: "🎈", tables: [], tough: true },
+    { name: "Rainbow Racer",    emoji: "🌈", tables: [], tough: true },
+    { name: "Puzzle Master",    emoji: "🧩", tables: [], tough: true },
+    { name: "Brain Wizard",     emoji: "🧠", tables: [], tough: true },
+    { name: "Number Ninja",     emoji: "🥷", tables: [], tough: true },
+    { name: "Math Magician",    emoji: "🎩", tables: [], tough: true },
+    { name: "Speed Star",       emoji: "💫", tables: [], tough: true },
+    { name: "Gold Medalist",    emoji: "🥇", tables: [], tough: true },
+    { name: "Fire Bird",        emoji: "🔥", tables: [], tough: true },
+    { name: "Unicorn Rider",    emoji: "🦄", tables: [], tough: true },
+    { name: "Sun Chaser",       emoji: "☀️", tables: [], tough: true },
+    { name: "Planet Hopper",    emoji: "🪐", tables: [], tough: true },
+    { name: "Legend",           emoji: "🌟", tables: [], tough: true },
+    { name: "Grand Master",     emoji: "👑", tables: [], tough: true },
+    { name: "Times Table Titan", emoji: "🏆", tables: [], tough: true }
   ];
+  // Sub-games. Each fact is a pair (a, b) on a 10 × 10 grid; a game says how to ask it and what
+  // the answer is. Multiplication is the first. Division would be text: (a*b) + " ÷ " + a, answer: b.
+  var GAMES = {
+    mul: {
+      id: "mul", name: "Multiplication", sign: "×", chart: "Multiplication chart", table: "multiplication table",
+      text: function (a, b) { return a + " × " + b; },
+      answer: function (a, b) { return a * b; },
+      hasBig: true // 3-digit mode
+    }
+  };
+  var GAME = GAMES.mul;
+  // Points needed to finish each level. Level 50 is the top: the player stays there, and every
+  // 30 points brings a summary.
+  function levelGoal(lv) { return lv === 0 ? 8 : lv <= 9 ? 10 : lv < LEVELS.length - 1 ? 20 : 30; }
   // Where levels from earlier versions land in these 20.
   var FROM_5 = [4, 8, 12, 16, 19];
   var FROM_10 = [1, 2, 4, 6, 8, 10, 12, 14, 16, 19];
@@ -481,9 +584,7 @@ body {
   var BIG_FAST_MS = 20000, BIG_OK_MS = 40000, BIG_IDLE_MS = 120000; // 3-digit mode gets far more time
   var FAST_MS = 5000;   // 3 stars at or under this
   var OK_MS = 8000;     // 2 stars at or under this, 1 star after
-  var METER_GOAL = 8;   // points needed to move up a level
   var STORE_KEY = "times-table-stars-v2";
-  var CLOUD_ON = false; // account saving is built but switched off until asked for
   var IDLE_MS = 45000;  // leave the round after this long with no key or tap
 
   var MSG = {
@@ -495,7 +596,7 @@ body {
   var STREAK_MSG = { 3: "3 in a row!", 5: "5 in a row! You're on fire!", 10: "10 in a row! Unstoppable! 🏆", 15: "15 in a row! Amazing! 👑", 20: "20 in a row! Math legend! 🦸" };
 
   function freshState() {
-    return { level: 0, meter: 0, stars: 0, streak: 0, best: 0, count: 0, w: {}, retry: [], recent: [], f: {}, hist: [], learned: false, v: 3, insane: false, fi: {}, learnedI: false, big: false, rev: 0, last: null };
+    return { last100: [], milestones: 0, level: 0, meter: 0, stars: 0, streak: 0, best: 0, count: 0, w: {}, retry: [], recent: [], f: {}, hist: [], learned: false, v: 3, insane: false, fi: {}, learnedI: false, big: false, rev: 0, last: null };
   }
   function keyOf(a, b) { return a + "x" + b; }
   var CHART_FACTS = 100; // 1×1 to 10×10; 3×7 and 7×3 count separately
@@ -566,13 +667,13 @@ body {
   function grade(s, fact, given, ms, untimed) {
     if (s.big) {
       // 3-digit mode is bonus play: it earns stars and streaks but leaves levels and the chart alone.
-      var okBig = given === fact.a * fact.b;
+      var okBig = given === GAME.answer(fact.a, fact.b);
       var stBig = !okBig ? 0 : untimed ? 2 : ms <= BIG_FAST_MS ? 3 : ms <= BIG_OK_MS ? 2 : 1;
       if (okBig) { s.stars += stBig; s.streak += 1; s.best = Math.max(s.best, s.streak); } else { s.streak = 0; }
       return { correct: okBig, stars: stBig, change: null, learned: false };
     }
     var k = keyOf(fact.a, fact.b);
-    var correct = given === fact.a * fact.b && (!s.insane || ms <= INSANE_MS);
+    var correct = given === GAME.answer(fact.a, fact.b) && (!s.insane || ms <= INSANE_MS);
     var stars = !correct ? 0 : s.insane ? 3 : untimed ? 2 : ms <= FAST_MS ? 3 : ms <= OK_MS ? 2 : 1;
     var w = s.w[k] || 3;
     var book = facts(s), rec = book[k] || (book[k] = { c: 0, n: 0, r: 0, t: 0 });
@@ -603,12 +704,16 @@ body {
     s.recent.push(k);
     if (s.recent.length > 3) s.recent.shift();
 
+    s.last100.push(correct ? 1 : 0);
+    if (s.last100.length > 100) s.last100.shift();
+
     var change = null;
-    if (s.meter >= METER_GOAL) {
-      if (s.level < LEVELS.length - 1) { s.level += 1; s.meter = 2; change = "up"; }
-      else { s.meter = METER_GOAL; }
+    if (s.meter >= levelGoal(s.level)) {
+      s.meter = 0;
+      if (s.level < LEVELS.length - 1) { s.level += 1; change = "up"; }
+      else { s.milestones = (s.milestones || 0) + 1; change = "milestone"; }
     } else if (s.meter < 0) {
-      if (s.level > 0) { s.level -= 1; s.meter = 5; change = "down"; }
+      if (s.level > 0) { s.level -= 1; s.meter = levelGoal(s.level) / 2; change = "down"; }
       else { s.meter = 0; }
     }
     return { correct: correct, stars: stars, change: change, learned: learnedNow };
@@ -624,7 +729,12 @@ body {
     pad: $("pad"), go: $("go"), stop: $("stop"), musicBtn: $("musicBtn"), roundInfo: $("roundInfo"),
     home: $("home"), play: $("play"), notice: $("notice"), players: $("players"),
     report: $("report"), reportBody: $("reportBody"), againBtn: $("againBtn"), switchBtn: $("switchBtn"), modeBtn: $("modeBtn"), modeBtn2: $("modeBtn2"), bigBtn: $("bigBtn"), bigBtn2: $("bigBtn2"), fuse: $("fuse"),
-    cloud: $("cloud"), whoLabel: $("whoLabel"), boardOpen: $("boardOpen"),
+    whoLabel: $("whoLabel"), boardOpen: $("boardOpen"), recoverOpen: $("recoverOpen"), meterLabel: $("meterLabel"),
+    emojiPanel: $("emojiPanel"), nickPanel: $("nickPanel"), wordsPanel: $("wordsPanel"), adjPick: $("adjPick"), animalPick: $("animalPick"),
+    wordsNote: $("wordsNote"), joinIntro: $("joinIntro"),
+    recNick: $("recNick"), recAdj: $("recAdj"), recAnimal: $("recAnimal"), recStatus: $("recStatus"), recGo: $("recGo"), recCancel: $("recCancel"),
+    ldEmoji: $("ldEmoji"), ldTitle: $("ldTitle"), ldNew: $("ldNew"), ldStats: $("ldStats"), ldNext: $("ldNext"), ldBurst: $("ldBurst"),
+    ldGo: $("ldGo"), ldStop: $("ldStop"),
     board: $("board"), boardGrid: $("boardGrid"), boardReadout: $("boardReadout"), boardLegend: $("boardLegend"),
     boardBack: $("boardBack"), boardIntro: $("boardIntro"),
     join: $("join"), joinTitle: $("joinTitle"), emojiPick: $("emojiPick"), nickInput: $("nickInput"),
@@ -636,9 +746,8 @@ body {
   var phase = "home", fact = null, typed = "", t0 = 0, untimed = false;
   var timers = [], nextTimer = null, idleTimer = null, armed = null;
 
-  // Players are saved in two places: this browser (instant, works offline) and the game's
-  // own database on the user's Claude account (survives closing the tab, clearing the
-  // browser, and switching devices).
+  // Players are saved in this browser. Players on the public leaderboard also keep a copy on the
+  // leaderboard service, so recovery words can bring them back on another device.
   function saveLocal() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify({ players: players })); } catch (e) {}
   }
@@ -648,7 +757,6 @@ body {
       state.last = new Date().toISOString();    // when this player last did something
     }
     saveLocal();
-    if (current) pushPlayer(current);
   }
   function normState(raw) {
     var st = Object.assign(freshState(), raw);
@@ -656,104 +764,42 @@ body {
     st.level = !raw.v ? FROM_5[Math.min(lv, 4)] : raw.v === 2 ? FROM_10[Math.min(lv, 9)] : Math.min(lv, LEVELS.length - 1);
     st.v = 3;
     st.retry = (st.retry || []).filter(function (r) { return r.a <= 10 && r.b <= 10; });
+    if (!Array.isArray(st.last100)) st.last100 = [];
     [st.f, st.fi].forEach(function (book) {
       for (var k in book) if (book[k] && book[k].c >= 3) book[k].s = true;
     });
     return st;
   }
   function validPub(x) { return !!(x && typeof x.id === "string" && typeof x.key === "string" && typeof x.emoji === "string" && typeof x.nickname === "string"); }
-  function validPlayer(p) { return p && typeof p.name === "string" && p.s && typeof p.s.level === "number"; }
+  function validPlayer(p) {
+    return p && typeof p.name === "string" && ((p.s && typeof p.s.level === "number") || (p.g && typeof p.g === "object"));
+  }
+  function normGames(g) {
+    var out = {};
+    for (var id in g) if (GAMES[id] && g[id] && typeof g[id] === "object") out[id] = normState(g[id]);
+    return out;
+  }
+  // This player's progress in the current game (created on first use).
+  function gs(p) { return p.g[GAME.id] || (p.g[GAME.id] = freshState()); }
   function load() {
     try {
       var d = JSON.parse(localStorage.getItem(STORE_KEY));
       if (d && Array.isArray(d.players)) {
         return d.players.filter(validPlayer).map(function (p) {
-          return { id: p.id || null, synced: !!p.synced, name: p.name, s: normState(p.s), pub: validPub(p.pub) ? p.pub : null };
+          // Saves from before sub-games kept multiplication progress in p.s.
+          var g = p.g && typeof p.g === "object" ? normGames(p.g) : { mul: normState(p.s) };
+          return { id: p.id || newId(), name: p.name, g: g, pub: validPub(p.pub) ? p.pub : null };
         });
       }
     } catch (e) {}
     return [];
   }
 
-  // ---------- Cloud save ----------
-  var cloud = { db: null, state: "connecting", pending: null, writing: {}, dirty: {} };
+  // Show one screen and hide the rest.
+  var SCREENS = ["home", "play", "report", "board", "join", "recover", "levelDone"];
+  function screen(name) { SCREENS.forEach(function (id) { $(id).hidden = id !== name; }); }
+
   function newId() { return "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
-  function renderCloud() {
-    el.cloud.hidden = !CLOUD_ON;
-    el.cloud.textContent = cloud.state === "on" ? "☁️ Players are saved to your Claude account."
-      : cloud.state === "connecting" ? "☁️ Looking for saved players…"
-      : "💾 Players are saved on this device only right now.";
-  }
-  function pushPlayer(p) {
-    if (!cloud.db || cloud.state !== "on") return;
-    if (!p.id) p.id = newId();
-    cloud.dirty[p.id] = p;
-    flushPlayer(p.id);
-  }
-  // One write at a time per player; answers given while a write is in flight go out in the next one.
-  function flushPlayer(id) {
-    if (cloud.writing[id] || cloud.state !== "on") return;
-    var p = cloud.dirty[id];
-    if (!p) return;
-    delete cloud.dirty[id];
-    cloud.writing[id] = true;
-    var body = JSON.parse(JSON.stringify({ name: p.name, s: p.s, rev: p.s.rev || 0, last: p.s.last || null }));
-    function done() { cloud.writing[id] = false; flushPlayer(id); }
-    cloud.db.collection("players").doc(id).set(body).then(function () {
-      if (!p.synced) { p.synced = true; saveLocal(); }
-      done();
-    }, function (e) {
-      if (e && e.code === "unavailable") {
-        if (!cloud.dirty[id]) cloud.dirty[id] = p;
-        setTimeout(done, 3000 + Math.random() * 2000);
-      } else {
-        cloud.state = "off"; cloud.writing[id] = false; renderCloud();
-      }
-    });
-  }
-  function connectCloud() {
-    if (!(window.claude && typeof window.claude.use === "function")) { cloud.state = "off"; renderCloud(); return; }
-    var giveUp = setTimeout(function () { if (cloud.state === "connecting") { cloud.state = "off"; renderCloud(); } }, 12000);
-    Promise.resolve(window.claude.use("db")).then(function (db) {
-      if (!db) throw new Error("no db");
-      cloud.db = db;
-      return db.collection("players").limit(500).get();
-    }).then(function (snap) {
-      clearTimeout(giveUp);
-      cloud.pending = snap.docs.map(function (d) { return { id: d.id, data: JSON.parse(JSON.stringify(d.data() || {})) }; });
-      cloud.state = "on";
-      if (phase === "home") showHome(el.notice.hidden ? "" : el.notice.textContent); else renderCloud();
-    }).catch(function () {
-      clearTimeout(giveUp);
-      cloud.state = "off"; renderCloud();
-    });
-  }
-  // Combine the account's copy with this browser's copy. For each player the copy with more saves wins.
-  function mergeCloud() {
-    if (!cloud.pending) return;
-    var remote = cloud.pending, seen = {}, push = [];
-    cloud.pending = null;
-    remote.forEach(function (r) {
-      if (!validPlayer(r.data)) return;
-      seen[r.id] = true;
-      var st = normState(r.data.s);
-      var mine = players.filter(function (p) { return p.id === r.id; })[0]
-        || players.filter(function (p) { return !p.id && p.name.toLowerCase() === r.data.name.toLowerCase(); })[0];
-      if (!mine) { players.push({ id: r.id, synced: true, name: r.data.name, s: st }); return; }
-      mine.id = r.id; mine.synced = true;
-      if ((st.rev || 0) > (mine.s.rev || 0)) mine.s = st;
-      else if ((mine.s.rev || 0) > (st.rev || 0)) push.push(mine);
-    });
-    players = players.filter(function (p) {
-      if (p.id && seen[p.id]) return true;
-      if (p.synced) return false;      // it was in the account before and has been removed elsewhere
-      if (!p.id) p.id = newId();
-      push.push(p);                    // only on this device so far: upload it
-      return true;
-    });
-    saveLocal();
-    push.forEach(pushPlayer);
-  }
 
   // ---------- Player screen ----------
   function showHome(note) {
@@ -762,18 +808,15 @@ body {
     clearTimers();
     clearTimeout(idleTimer);
     current = null; state = null; round = null;
-    mergeCloud();
-    renderCloud();
-    el.play.hidden = true; el.report.hidden = true; el.home.hidden = false;
-    el.board.hidden = true; el.join.hidden = true;
+    screen("home");
     el.notice.hidden = !note; el.notice.textContent = note || "";
     el.players.textContent = "";
     players.forEach(function (p) {
-      var L = LEVELS[p.s.level];
+      var ps = gs(p), L = LEVELS[ps.level];
       var row = document.createElement("div"); row.className = "player-row";
       var b = document.createElement("button"); b.type = "button"; b.className = "key player";
-      var nm = document.createElement("span"); nm.textContent = p.name + (p.s.learned ? " 👑" : "") + (p.s.learnedI ? " 🔥" : "");
-      var info = document.createElement("small"); info.textContent = "Level " + (p.s.level + 1) + " " + L.emoji + " · ⭐ " + p.s.stars;
+      var nm = document.createElement("span"); nm.textContent = p.name + (ps.learned ? " 👑" : "") + (ps.learnedI ? " 🔥" : "") + (p.pub ? " " + p.pub.emoji : "");
+      var info = document.createElement("small"); info.textContent = "Level " + (ps.level + 1) + " " + L.emoji + " · ⭐ " + ps.stars;
       b.appendChild(nm); b.appendChild(info);
       b.addEventListener("click", function () { choose(p); });
       var x = document.createElement("button"); x.type = "button"; x.className = "key remove";
@@ -782,7 +825,6 @@ body {
         if (armed === p) {
           armed = null; players.splice(players.indexOf(p), 1); saveLocal();
           if (p.pub && lb.ok) api("/leave", { id: p.pub.id, key: p.pub.key }).catch(function () {});
-          if (cloud.db && cloud.state === "on" && p.id) cloud.db.collection("players").doc(p.id).delete().catch(function () {});
           showHome();
         }
         else { armed = p; showHome(); }
@@ -790,19 +832,19 @@ body {
       if (armed === p) { x.textContent = "Erase?"; }
       var rp = document.createElement("button"); rp.type = "button"; rp.className = "key report-btn";
       rp.textContent = "📊"; rp.setAttribute("aria-label", "Report for " + p.name);
-      rp.addEventListener("click", function () { current = p; state = p.s; armed = null; round = null; showReport(false); });
+      rp.addEventListener("click", function () { current = p; state = gs(p); armed = null; round = null; showReport(false); });
       row.appendChild(b); row.appendChild(rp); row.appendChild(x);
       el.players.appendChild(row);
     });
     el.whoLabel.hidden = players.length === 0;
     el.boardOpen.hidden = !lb.ok;
+    el.recoverOpen.hidden = !lb.ok;
     el.newLabel.textContent = players.length ? "Or add a new player" : "What is your name?";
     el.newName.value = "";
   }
   function choose(p) {
-    current = p; state = p.s; armed = null;
-    el.home.hidden = true; el.report.hidden = true; el.play.hidden = false;
-    el.board.hidden = true; el.join.hidden = true;
+    current = p; state = gs(p); armed = null;
+    screen("play");
     showReady();
     bump();
   }
@@ -811,14 +853,15 @@ body {
     var name = el.newName.value.replace(/\s+/g, " ").trim().slice(0, 18);
     if (!name) { el.newName.focus(); return; }
     var found = players.filter(function (p) { return p.name.toLowerCase() === name.toLowerCase(); })[0];
-    if (!found) { found = { id: newId(), synced: false, name: name, s: freshState() }; players.push(found); saveLocal(); pushPlayer(found); }
+    if (!found) { found = { id: newId(), name: name, g: {} }; gs(found); players.push(found); saveLocal(); }
     choose(found);
   });
 
   // Leave the round when nobody has pressed a key or tapped for a while.
   function bump() {
     clearTimeout(idleTimer);
-    if (phase !== "home") idleTimer = setTimeout(function () {
+    // The between-levels summary is a break screen: it waits as long as it takes.
+    if (phase !== "home" && phase !== "levelDone") idleTimer = setTimeout(function () {
       var playing = isPlaying();
       var who = current.name;
       finishRound();
@@ -836,7 +879,9 @@ body {
     el.level.textContent = "Level " + (state.level + 1) + " · " + L.name + " " + L.emoji;
     el.stars.textContent = "⭐ " + state.stars;
     el.streak.textContent = "🔥 " + state.streak;
-    var pct = Math.max(0, Math.min(100, Math.round(state.meter / METER_GOAL * 100)));
+    var top = state.level === LEVELS.length - 1;
+    el.meterLabel.textContent = top ? "Next summary" : "Next level";
+    var pct = Math.max(0, Math.min(100, Math.round(state.meter / levelGoal(state.level) * 100)));
     el.meterFill.style.width = pct + "%";
     el.meterTrack.setAttribute("aria-valuenow", pct);
     var next = LEVELS[state.level + 1];
@@ -865,7 +910,7 @@ body {
     el.roundInfo.textContent = "Play as long as you like. Press S to stop.";
     el.question.textContent = state.count ? "Hi again, " + current.name + "!" : "Hi, " + current.name + "!";
     el.equals.hidden = true; el.answer.hidden = true;
-    if (!state.learnedI) state.big = false;
+    if (!state.learnedI || !GAME.hasBig) state.big = false;
     setFeedback(state.big ? "🧮" : state.insane ? "🔥" : "👋",
       state.big ? "3-digit mode is on!" : state.insane ? "Insane mode is on!" : "Answer fast to win more stars!",
       state.big ? "Big problems like 347 × 6. Take your time." : state.insane ? "An answer only counts if it is right within " + (INSANE_MS / 1000) + " seconds." : "");
@@ -880,11 +925,10 @@ body {
 
   function startRound() {
     round = { n: 0, correct: 0, stars: 0, ms: 0, timed: 0, max: 0, items: [], saved: false, insane: state.insane, big: state.big,
-      fast: state.big ? BIG_FAST_MS : FAST_MS, ok: state.big ? BIG_OK_MS : OK_MS };
+      fast: state.big ? BIG_FAST_MS : FAST_MS, ok: state.big ? BIG_OK_MS : OK_MS, lv: newLevelStats(), pendingLevel: null };
     el.modeBtn.hidden = true; el.bigBtn.hidden = true;
     el.problem.classList.toggle("big", state.big);
-    el.home.hidden = true; el.report.hidden = true; el.play.hidden = false;
-    el.board.hidden = true; el.join.hidden = true;
+    screen("play");
     el.stop.textContent = "Stop (press S)";
     startMusic();
     countdown();
@@ -986,12 +1030,12 @@ body {
   function finishRound() {
     if (!round || round.saved || round.n === 0) return;
     round.saved = true;
-    if (current && current.pub) lbPost(current);
     if (round.timed && !round.big) {
       state.hist.push({ avg: Math.round(round.ms / round.timed), max: Math.round(round.max), ok: round.correct, n: round.n, i: round.insane ? 1 : 0, d: Date.now() });
       if (state.hist.length > 60) state.hist.shift();
     }
     save();
+    if (current && current.pub) lbSync(current);
   }
 
   // ---------- Report ----------
@@ -1019,8 +1063,8 @@ body {
       b.textContent = "🧮 3-digit mode: " + (state.big ? "ON" : "OFF");
       b.setAttribute("aria-pressed", state.big ? "true" : "false");
     });
-    el.bigBtn2.hidden = !state.learnedI;
-    el.bigBtn.hidden = !state.learnedI || phase !== "ready";
+    el.bigBtn2.hidden = !GAME.hasBig || !state.learnedI;
+    el.bigBtn.hidden = !GAME.hasBig || !state.learnedI || phase !== "ready";
   }
   function toggleMode(which) {
     if (which === "big") { state.big = !state.big && state.learnedI; if (state.big) state.insane = false; }
@@ -1034,12 +1078,17 @@ body {
   el.bigBtn2.addEventListener("click", function () { toggleMode("big"); });
 
   // ---------- Public leaderboard ----------
-  // Talks to the leaderboard service (worker/ in the repository). Players opt in per player:
-  // their emoji, nickname and the times below are the only things ever sent.
+  // Talks to the leaderboard service (worker/ in the repository). Players opt in per player.
+  // What is sent: emoji, nickname, recovery words (only as a check, never shown), per-fact
+  // times, right-answer share, and the player's saved game so recovery can restore it.
   var LB_API = (window.TTS_API || "https://fun-with-numbers-api.adelakabiljo.workers.dev").replace(/\/+$/, "");
   var LB_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
   var LB_STREAK = 2;    // right answers in a row before a fact counts on the leaderboard (stars still need 3)
   var LB_MIN_FACTS = 2; // facts that must count before a player can join
+  var ADJECTIVES = ["fuzzy", "sunny", "brave", "happy", "sleepy", "bouncy", "clever", "gentle", "jolly", "lucky",
+    "mighty", "quiet", "speedy", "sparkly", "silly", "swift", "tiny", "giant", "curious", "friendly"];
+  var ANIMALS = ["bear", "otter", "panda", "tiger", "koala", "penguin", "dolphin", "rabbit", "turtle", "falcon",
+    "giraffe", "zebra", "lion", "fox", "owl", "whale", "puppy", "kitten", "hedgehog", "octopus"];
   var lb = { ok: false, err: "" };
   var lbBack = "home";
 
@@ -1059,7 +1108,7 @@ body {
     api("/health").then(function (r) {
       if (r.status !== 200) return;
       lb.ok = true;
-      if (phase === "home") el.boardOpen.hidden = false;
+      if (phase === "home") { el.boardOpen.hidden = false; el.recoverOpen.hidden = false; }
     }).catch(function () {});
   }
 
@@ -1077,17 +1126,38 @@ body {
     }
     return out;
   }
+  function accOf(s) {
+    var l = s.last100 || [], right = 0;
+    l.forEach(function (x) { right += x ? 1 : 0; });
+    return { right: right, total: l.length };
+  }
+
+  // When the service no longer knows this player's key (another device recovered it, or it was removed).
+  function lostPub(p) {
+    p.pub = null; saveLocal();
+    lb.err = "This leaderboard name is now used on another device, or was removed. You can join again, or recover it with your nickname and recovery words.";
+  }
 
   function lbPost(p) {
     if (!lb.ok || !p || !p.pub) return Promise.resolve();
-    var pub = p.pub;
-    return api("/scores", { id: pub.id, key: pub.key, times: boardTimes(p.s) }).then(function (r) {
-      if (r.status === 403) { p.pub = null; saveLocal(); lb.err = "This player was removed from the leaderboard."; }
+    var pub = p.pub, s = gs(p);
+    var acc = accOf(s);
+    return api("/scores", { id: pub.id, key: pub.key, game: GAME.id, times: boardTimes(s), acc: acc.total ? acc : null }).then(function (r) {
+      if (r.status === 403) lostPub(p);
       else lb.err = r.status === 200 ? "" : "The leaderboard didn't accept the latest times. They'll be sent again after the next round.";
     }).catch(function () {
       lb.err = "Couldn't reach the leaderboard. Times will be sent again after the next round.";
     });
   }
+  // Keep a copy of the whole player on the service, so recovery can bring it to another device.
+  function pushProgress(p) {
+    if (!lb.ok || !p || !p.pub) return Promise.resolve();
+    var pub = p.pub;
+    return api("/progress", { id: pub.id, key: pub.key, data: { v: 1, name: p.name, g: p.g } }).then(function (r) {
+      if (r.status === 403) lostPub(p);
+    }).catch(function () {});
+  }
+  function lbSync(p) { return Promise.all([lbPost(p), pushProgress(p)]); }
 
   function lbButton(text, fn) {
     var b = node("button", "key", text); b.type = "button";
@@ -1101,8 +1171,22 @@ body {
     var row = node("div", "lb-actions");
     if (who.pub) {
       p.appendChild(node("p", "strong", "You're on the leaderboard as " + who.pub.emoji + " " + who.pub.nickname + "."));
+      if (who.pub.words) {
+        var wordsLine = node("p", "", "");
+        wordsLine.hidden = true;
+        wordsLine.textContent = "Your recovery words are \"" + who.pub.words.adj + " " + who.pub.words.animal + "\". With your nickname, " + who.pub.nickname + ", they bring this player back on another device.";
+        var show = lbButton("Show my recovery words", function () {
+          wordsLine.hidden = !wordsLine.hidden;
+          show.textContent = wordsLine.hidden ? "Show my recovery words" : "Hide my recovery words";
+        });
+        row.appendChild(show);
+        p.appendChild(wordsLine);
+      } else {
+        p.appendChild(node("p", "strong", "Choose recovery words so you can bring this player back if you change devices."));
+        row.appendChild(lbButton("Choose recovery words", function () { showJoin("words"); }));
+      }
       row.appendChild(lbButton("See leaderboard", function () { lbBack = "report"; showBoard(); }));
-      row.appendChild(lbButton("Change emoji or name", function () { showJoin(); }));
+      row.appendChild(lbButton("Change emoji or name", function () { showJoin("edit"); }));
       var leave = lbButton("Leave", function () {
         if (leave.dataset.armed !== "1") { leave.dataset.armed = "1"; leave.textContent = "Tap again to leave"; return; }
         leave.disabled = true;
@@ -1117,11 +1201,11 @@ body {
       });
       row.appendChild(leave);
     } else {
-      var ready = boardTimes(who.s).length;
+      var ready = boardTimes(gs(who)).length;
       p.appendChild(node("p", "strong", "Not on the public leaderboard."));
       if (ready >= LB_MIN_FACTS) {
         p.appendChild(node("p", "", "Joining shows an emoji and a nickname you choose, and your fastest facts, to everyone who opens the game."));
-        row.appendChild(lbButton("Join", function () { showJoin(); }));
+        row.appendChild(lbButton("Join", function () { showJoin("join"); }));
       } else {
         // Joining with nothing to show would put an empty row on the board, so wait until a few facts count.
         p.appendChild(node("p", "", "You can join once " + LB_MIN_FACTS + " facts are ready: answer a fact right " + LB_STREAK + " times in a row to make it ready. Ready so far: " + ready + " of " + LB_MIN_FACTS + "."));
@@ -1136,8 +1220,7 @@ body {
   function showLbScreen(which) {
     stopMusic(); clearTimers();
     phase = which;
-    el.home.hidden = true; el.play.hidden = true; el.report.hidden = true;
-    el.board.hidden = which !== "board"; el.join.hidden = which !== "join";
+    screen(which);
     bump();
     window.scrollTo(0, 0);
   }
@@ -1147,7 +1230,7 @@ body {
     el.boardGrid.textContent = "";
     el.boardLegend.textContent = "";
     el.boardReadout.textContent = "Loading the leaderboard…";
-    api("/board").then(function (r) {
+    api("/board?game=" + GAME.id).then(function (r) {
       if (phase !== "board") return;
       if (r.status !== 200) throw new Error("bad");
       renderBoard(r.data);
@@ -1162,7 +1245,7 @@ body {
     players.forEach(function (p) { if (p.pub) mine[p.pub.id] = true; });
     var g = el.boardGrid, picked = null;
     g.textContent = "";
-    g.appendChild(node("div", "head", "×"));
+    g.appendChild(node("div", "head", GAME.sign));
     for (var h = 1; h <= 10; h++) g.appendChild(node("div", "head", String(h)));
     for (var a = 1; a <= 10; a++) {
       g.appendChild(node("div", "head", String(a)));
@@ -1172,7 +1255,7 @@ body {
       var c = d.cells && d.cells[keyOf(a, b)], who = c && byId[c.p];
       var btn = node("button", "cell" + (who && mine[who.id] ? " mine" : ""), who ? who.emoji : "");
       btn.type = "button";
-      var text = a + " × " + b + " = " + (a * b) + ": " + (who ? who.emoji + " " + who.nickname + " · " + secs(c.ms) : "nobody yet");
+      var text = GAME.text(a, b) + " = " + GAME.answer(a, b) + ": " + (who ? who.emoji + " " + who.nickname + " · " + secs(c.ms) : "nobody yet");
       btn.setAttribute("aria-label", text); btn.title = text;
       btn.addEventListener("click", function () {
         if (picked) picked.classList.remove("sel");
@@ -1188,7 +1271,9 @@ body {
       var r = node("div", "legend-row");
       r.appendChild(node("span", "em", p.emoji));
       r.appendChild(node("span", "nm", p.nickname + (mine[p.id] ? " (this device)" : "")));
-      r.appendChild(node("span", "ct", p.squares + (p.squares === 1 ? " square" : " squares")));
+      var ct = p.squares + (p.squares === 1 ? " square" : " squares");
+      if (p.total) ct += " · " + p.right + " of last " + p.total + " right";
+      r.appendChild(node("span", "ct", ct));
       el.boardLegend.appendChild(r);
     });
     if (!held) el.boardLegend.appendChild(node("p", "", "No one is on the board yet."));
@@ -1198,8 +1283,8 @@ body {
   function yourTimes(a, b) {
     var k = keyOf(a, b), list = current ? [current] : players, lines = [];
     list.forEach(function (p) {
-      var best = null, counts = false, now = Date.now();
-      [p.s.f[k], p.s.fi[k]].forEach(function (r) {
+      var best = null, counts = false, now = Date.now(), s = gs(p);
+      [s.f[k], s.fi[k]].forEach(function (r) {
         if (!r || !r.t) return;
         if (!best || r.t < best) best = r.t;
         if (r.n >= LB_STREAK && r.c >= LB_STREAK && r.at && now - r.at <= LB_WINDOW_MS) counts = true;
@@ -1211,18 +1296,52 @@ body {
     return lines.length ? "\n" + lines.join("\n") : "";
   }
 
-  var join = { emoji: "", nickOk: false, checkTimer: null, seq: 0 };
-  function showJoin() {
+  // Three random words from a list, always including `keep` when given.
+  function threeOf(list, keep) {
+    var pool = list.filter(function (w) { return w !== keep; }), out = keep ? [keep] : [];
+    while (out.length < 3) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    return out.sort(function () { return Math.random() - 0.5; });
+  }
+  function wordButtons(box, words, picked, onPick) {
+    box.textContent = "";
+    words.forEach(function (w) {
+      var b = node("button", "word", w);
+      b.type = "button";
+      b.setAttribute("role", "radio");
+      b.setAttribute("aria-checked", w === picked ? "true" : "false");
+      b.addEventListener("click", function () {
+        Array.prototype.forEach.call(box.children, function (x) { x.setAttribute("aria-checked", x === b ? "true" : "false"); });
+        onPick(w);
+      });
+      box.appendChild(b);
+    });
+  }
+
+  // One screen for joining ("join"), changing emoji or nickname ("edit"), and choosing recovery words ("words").
+  var join = { mode: "join", emoji: "", nickOk: false, adj: "", animal: "", checkTimer: null, seq: 0 };
+  function showJoin(mode) {
     showLbScreen("join");
     var pub = current.pub;
-    el.joinTitle.textContent = pub ? "Change emoji or nickname" : "Join the leaderboard";
-    el.joinSave.textContent = pub ? "Save ▶" : "Join ▶";
+    join.mode = mode;
+    join.adj = ""; join.animal = "";
+    el.joinTitle.textContent = mode === "edit" ? "Change emoji or nickname" : mode === "words" ? "Choose recovery words" : "Join the leaderboard";
+    el.joinIntro.textContent = mode === "words"
+      ? "Pick one word from each list. With your nickname, they bring this player back on another device."
+      : "Pick an emoji and a nickname. Everyone who opens the game will see them, so don't use your real full name.";
+    el.joinSave.textContent = mode === "join" ? "Join ▶" : "Save ▶";
+    el.emojiPanel.hidden = mode === "words";
+    el.nickPanel.hidden = mode === "words";
+    el.wordsPanel.hidden = mode === "edit";
+    el.wordsNote.textContent = "";
+    wordButtons(el.adjPick, threeOf(ADJECTIVES), "", function (w) { join.adj = w; wordsPicked(); });
+    wordButtons(el.animalPick, threeOf(ANIMALS), "", function (w) { join.animal = w; wordsPicked(); });
     join.emoji = pub ? pub.emoji : "";
     el.nickInput.value = pub ? pub.nickname : "";
     el.emojiPick.textContent = "";
     el.nickStatus.textContent = ""; el.nickStatus.className = "nick-status";
-    join.nickOk = false;
+    join.nickOk = mode === "words";
     renderJoinSave();
+    if (mode === "words") return;
     api("/taken" + (pub ? "?exclude=" + encodeURIComponent(pub.id) : "")).then(function (r) {
       if (phase !== "join") return;
       renderEmojis(r.data.all || [], r.data.emojis || []);
@@ -1230,6 +1349,12 @@ body {
       if (phase === "join") el.nickStatus.textContent = "Couldn't reach the leaderboard. Check the internet connection and try again.";
     });
     if (el.nickInput.value) nickTyped(true);
+  }
+  function wordsPicked() {
+    el.wordsNote.textContent = join.adj && join.animal
+      ? "Your recovery words: \"" + join.adj + " " + join.animal + "\". Write them down somewhere safe!"
+      : "";
+    renderJoinSave();
   }
   function renderEmojis(all, taken) {
     el.emojiPick.textContent = "";
@@ -1270,23 +1395,30 @@ body {
       });
     }, now ? 0 : 350);
   }
-  function renderJoinSave() { el.joinSave.disabled = !(join.emoji && join.nickOk); }
+  function renderJoinSave() {
+    var words = !!(join.adj && join.animal);
+    el.joinSave.disabled = join.mode === "words" ? !words
+      : join.mode === "edit" ? !(join.emoji && join.nickOk)
+      : !(join.emoji && join.nickOk && words);
+  }
 
   function joinSave() {
-    var who = current, pub = who.pub, nick = el.nickInput.value;
+    var who = current, pub = who.pub, nick = el.nickInput.value, mode = join.mode;
+    var words = { adj: join.adj, animal: join.animal };
     el.joinSave.disabled = true;
-    var req = pub
-      ? api("/profile", { id: pub.id, key: pub.key, emoji: join.emoji, nickname: nick })
-      : api("/join", { emoji: join.emoji, nickname: nick });
+    var req = mode === "words" ? api("/recovery", { id: pub.id, key: pub.key, adj: words.adj, animal: words.animal })
+      : mode === "edit" ? api("/profile", { id: pub.id, key: pub.key, emoji: join.emoji, nickname: nick })
+      : api("/join", { emoji: join.emoji, nickname: nick, adj: words.adj, animal: words.animal });
     req.then(function (r) {
       if (r.status === 200) {
-        who.pub = pub
-          ? { id: pub.id, key: pub.key, emoji: r.data.emoji, nickname: r.data.nickname }
-          : { id: r.data.id, key: r.data.key, emoji: r.data.emoji, nickname: r.data.nickname };
+        if (mode === "words") who.pub.words = words;
+        else if (mode === "edit") { who.pub.emoji = r.data.emoji; who.pub.nickname = r.data.nickname; }
+        else who.pub = { id: r.data.id, key: r.data.key, emoji: r.data.emoji, nickname: r.data.nickname, words: words };
         saveLocal(); lb.err = "";
+        if (mode === "words") { pushProgress(who); showReport(false, false); return; }
         lbBack = "report";
         // Send this player's times first, so they're already on the board when it opens.
-        return lbPost(who).then(showBoard, showBoard);
+        return lbSync(who).then(showBoard, showBoard);
       }
       var d = r.data || {};
       if (d.field === "emoji") {
@@ -1295,16 +1427,107 @@ body {
         el.nickStatus.textContent = d.reason || "Someone just picked that emoji. Choose another.";
         return api("/taken" + (pub ? "?exclude=" + encodeURIComponent(pub.id) : "")).then(function (t) { renderEmojis(t.data.all || [], t.data.emojis || []); });
       }
-      if (r.status === 403) { who.pub = null; saveLocal(); }
-      join.nickOk = false;
-      el.nickStatus.className = "nick-status bad";
-      el.nickStatus.textContent = d.reason || "That didn't work. Try again.";
+      if (r.status === 403) { lostPub(who); showReport(false, false); return; }
+      if (d.field !== "words") join.nickOk = false;
+      var where = d.field === "words" ? el.wordsNote : el.nickStatus;
+      where.className = (where === el.nickStatus ? "nick-status " : "") + "bad";
+      where.textContent = d.reason || "That didn't work. Try again.";
       renderJoinSave();
     }).catch(function () {
       el.nickStatus.className = "nick-status bad";
       el.nickStatus.textContent = "Couldn't reach the leaderboard. Try again in a moment.";
       renderJoinSave();
     });
+  }
+
+  // Bring a player back on this device from their nickname and recovery words.
+  var rec = { adj: "", animal: "" };
+  function showRecover() {
+    current = null; state = null;
+    showLbScreen("recover");
+    rec.adj = ""; rec.animal = "";
+    el.recNick.value = "";
+    el.recStatus.textContent = ""; el.recStatus.className = "nick-status";
+    wordButtons(el.recAdj, ADJECTIVES, "", function (w) { rec.adj = w; renderRecover(); });
+    wordButtons(el.recAnimal, ANIMALS, "", function (w) { rec.animal = w; renderRecover(); });
+    renderRecover();
+  }
+  function renderRecover() { el.recGo.disabled = !(el.recNick.value.trim() && rec.adj && rec.animal); }
+  function recoverGo() {
+    el.recGo.disabled = true;
+    el.recStatus.className = "nick-status"; el.recStatus.textContent = "Checking…";
+    api("/recover", { nickname: el.recNick.value.trim(), adj: rec.adj, animal: rec.animal }).then(function (r) {
+      var d = r.data || {};
+      if (r.status !== 200) {
+        el.recStatus.className = "nick-status bad";
+        el.recStatus.textContent = (d.reason || "That didn't work.") + (d.triesLeft ? " " + d.triesLeft + (d.triesLeft === 1 ? " try" : " tries") + " left today." : "");
+        renderRecover();
+        return;
+      }
+      var prog = d.progress && typeof d.progress === "object" ? d.progress : null;
+      var pub = { id: d.id, key: d.key, emoji: d.emoji, nickname: d.nickname, words: { adj: rec.adj, animal: rec.animal } };
+      var p = players.filter(function (x) { return x.pub && x.pub.id === d.id; })[0];
+      if (!p) {
+        var name = (prog && typeof prog.name === "string" && prog.name.trim()) || d.nickname, base = name, n = 2;
+        while (players.some(function (x) { return x.name.toLowerCase() === name.toLowerCase(); })) name = base + " " + n++;
+        p = { id: newId(), name: name.slice(0, 22), g: {} };
+        players.push(p);
+      }
+      if (prog && prog.g && typeof prog.g === "object") p.g = normGames(prog.g);
+      gs(p);
+      p.pub = pub;
+      saveLocal();
+      showHome("Welcome back, " + p.name + "! Your stars, levels and charts are back on this device.");
+    }).catch(function () {
+      el.recStatus.className = "nick-status bad";
+      el.recStatus.textContent = "Couldn't reach the leaderboard. Try again in a moment.";
+      renderRecover();
+    });
+  }
+
+  // ---------- Between levels ----------
+  // After each level, and every 30 points at the top level, the game pauses on a summary so a
+  // child can take a break. It waits for Continue or Stop with no time limit.
+  function newLevelStats() { return { n: 0, right: 0, ms: 0, timed: 0, stars: learnedCount(state) }; }
+  function showLevelDone(change) {
+    phase = "levelDone";
+    stopMusic(); clearTimers(); clearTimeout(idleTimer);
+    screen("levelDone");
+    if (current && current.pub) lbSync(current);
+    var L = LEVELS[state.level], st = round.lv, top = state.level === LEVELS.length - 1;
+    el.ldEmoji.textContent = change === "milestone" ? "🏆" : L.emoji;
+    el.ldTitle.textContent = change === "milestone"
+      ? "Another " + levelGoal(state.level) + " points at Level " + (state.level + 1) + "!"
+      : "Level " + (state.level + 1) + ": " + L.name + "!";
+    el.ldNew.textContent = change === "milestone"
+      ? "Summary number " + state.milestones + " at the top level. Amazing, " + current.name + "!"
+      : L.tables.length ? "New facts unlocked: " + GAME.sign + L.tables.join(" and " + GAME.sign) + "."
+      : top ? "Top level! Every table, all mixed up."
+      : "Mix-up level: all your tables together.";
+    var lines = el.ldStats;
+    lines.textContent = "";
+    function line(t) { lines.appendChild(node("li", "", t)); }
+    if (st.n) {
+      line(st.right + " of " + st.n + " right (" + Math.round(st.right / st.n * 100) + "%)");
+      if (st.timed) line("Average time: " + secs(st.ms / st.timed));
+    }
+    var newStars = learnedCount(state) - st.stars;
+    if (newStars > 0) line(newStars + " new " + (newStars === 1 ? "star" : "stars") + " on the chart ★");
+    line("⭐ " + state.stars + " stars collected so far");
+    el.ldNext.textContent = top
+      ? "Every " + levelGoal(state.level) + " points from now on brings another summary."
+      : "Next: " + levelGoal(state.level) + " points to reach Level " + (state.level + 2) + ", " + LEVELS[state.level + 1].name + " " + LEVELS[state.level + 1].emoji + ".";
+    round.lv = newLevelStats();
+    burst(el.ldBurst);
+    window.scrollTo(0, 0);
+  }
+  function levelContinue() {
+    if (phase !== "levelDone") return;
+    if (round.done) { showReport(false); return; }
+    screen("play");
+    startMusic();
+    countdown();
+    bump();
   }
 
   var lastStopped = false;
@@ -1316,8 +1539,7 @@ body {
     phase = "report";
     clearTimers();
     bump();
-    el.home.hidden = true; el.play.hidden = true; el.report.hidden = false;
-    el.board.hidden = true; el.join.hidden = true;
+    screen("report");
     var who = current.name, body = el.reportBody;
     body.textContent = "";
 
@@ -1338,7 +1560,7 @@ body {
 
     if (allLearned(state)) {
       var cheer = node("section", "panel cheer");
-      cheer.appendChild(node("h2", "", state.insane ? "🔥 " + who + " has beaten insane mode!" : "🏆 " + who + " has learned the multiplication table!"));
+      cheer.appendChild(node("h2", "", state.insane ? "🔥 " + who + " has beaten insane mode!" : "🏆 " + who + " has learned the " + GAME.table + "!"));
       cheer.appendChild(node("p", "", "Every fact on the 10 × 10 chart was answered correctly 3 times in a row" + (state.insane ? ", each within 5 seconds. 3-digit mode is now unlocked." : ".")));
       body.appendChild(cheer);
     }
@@ -1366,10 +1588,10 @@ body {
     });
     var well = [], wrong = [], slow = [], late = [];
     order.forEach(function (k) {
-      var r = byKey[k], q = r.a + " × " + r.b;
-      if (r.missed && r.given.length) wrong.push(q + " = " + (r.a * r.b) + " · answered " + r.given.join(", "));
-      else if (r.missed) late.push(q + " = " + (r.a * r.b));
-      else if (r.slow) slow.push(q + " = " + (r.a * r.b) + " · " + secs(r.slow));
+      var r = byKey[k], q = GAME.text(r.a, r.b), ans = GAME.answer(r.a, r.b);
+      if (r.missed && r.given.length) wrong.push(q + " = " + ans + " · answered " + r.given.join(", "));
+      else if (r.missed) late.push(q + " = " + ans);
+      else if (r.slow) slow.push(q + " = " + ans + " · " + secs(r.slow));
       else if (r.fast != null) well.push(q + " · " + secs(r.fast));
     });
     var p = node("section", "panel");
@@ -1416,7 +1638,7 @@ body {
     if (rows.length < 2) return null;
     rows.sort(function (x, y) { return (y.acc - x.acc) || (x.time - y.time); });
     var best = rows[0], worst = rows[rows.length - 1];
-    function say(x) { return "×" + x.t + " table: " + x.r + " of " + x.n + " right" + (x.time ? ", about " + secs(x.time) + " each" : ""); }
+    function say(x) { return GAME.sign + x.t + " table: " + x.r + " of " + x.n + " right" + (x.time ? ", about " + secs(x.time) + " each" : ""); }
     var p = node("section", "panel");
     p.appendChild(node("h2", "", "Tables so far"));
     p.appendChild(node("p", "strong", "🌟 Strongest is the " + say(best) + "."));
@@ -1509,14 +1731,14 @@ body {
   // The 10 × 10 chart, marked by how well each fact is known.
   function chartPanel() {
     var p = node("section", "panel"), got = learnedCount(state);
-    p.appendChild(node("h2", "", state.insane ? "Multiplication chart 🔥 insane mode" : "Multiplication chart"));
+    p.appendChild(node("h2", "", state.insane ? GAME.chart + " 🔥 insane mode" : GAME.chart));
     p.appendChild(node("p", "strong", got + " of " + CHART_FACTS + " facts learned. A fact is learned after 3 right answers in a row" + (state.insane ? ", each within 5 seconds." : ".")));
     var bar = node("div", "bar"), fill = node("div");
     fill.style.width = Math.round(got / CHART_FACTS * 100) + "%";
     bar.appendChild(fill); p.appendChild(bar);
     var g = node("div", "grid10"), detail = node("div", "readout"), picked = null;
     detail.textContent = "Tap a square to see its answer time.";
-    g.appendChild(node("div", "head", "×"));
+    g.appendChild(node("div", "head", GAME.sign));
     for (var h = 1; h <= 10; h++) g.appendChild(node("div", "head", String(h)));
     for (var a = 1; a <= 10; a++) {
       g.appendChild(node("div", "head", String(a)));
@@ -1534,7 +1756,7 @@ body {
       if (starred) cls += " y" + step; else if (rec && rec.c > 0) cls += " g" + step;
       var cell = node("button", cls, mark);
       cell.type = "button";
-      var text = a + " × " + b + " = " + (a * b) + ": " + what
+      var text = GAME.text(a, b) + " = " + GAME.answer(a, b) + ": " + what
         + (t ? ", usually about " + secs(t) : rec && rec.n ? ", no time yet" : "")
         + (rec && rec.n ? ", " + rec.r + " of " + rec.n + " right" : "");
       cell.title = text; cell.setAttribute("aria-label", text);
@@ -1570,7 +1792,7 @@ body {
     el.card.className = "card";
     el.roundInfo.textContent = (state.big ? "🧮 " : state.insane ? "🔥 " : "") + current.name + " · Question " + (round.n + 1);
     el.question.classList.remove("pop");
-    el.question.textContent = fact.a + " × " + fact.b;
+    el.question.textContent = GAME.text(fact.a, fact.b);
     el.equals.hidden = false; el.answer.hidden = false;
     el.answer.textContent = "";
     setFeedback("", "", "");
@@ -1603,7 +1825,7 @@ body {
     var ms = performance.now() - t0;
     if (state.insane && ms > INSANE_MS) timeUp = true;
     // When the fuse runs out, whatever is on the screen is the answer: if it is right, it counts.
-    if (timeUp && typed !== "" && parseInt(typed, 10) === fact.a * fact.b) { timeUp = false; ms = INSANE_MS; }
+    if (timeUp && typed !== "" && parseInt(typed, 10) === GAME.answer(fact.a, fact.b)) { timeUp = false; ms = INSANE_MS; }
     clearTimers();
     setPad(false);
     if (state.insane) {
@@ -1615,6 +1837,10 @@ body {
     if (result.correct) { round.correct += 1; round.stars += result.stars; }
     if (!untimed) { round.ms += ms; round.timed += 1; round.max = Math.max(round.max, ms); }
     round.items.push({ a: fact.a, b: fact.b, ok: result.correct, ms: untimed ? null : ms, given: typed, late: timeUp });
+    round.lv.n += 1;
+    if (result.correct) round.lv.right += 1;
+    if (!untimed) { round.lv.ms += ms; round.lv.timed += 1; }
+    var levelEnd = result.change === "up" || result.change === "milestone" ? result.change : null;
     var last = !!result.learned;
     if (last) round.done = true;
     save();
@@ -1625,10 +1851,11 @@ body {
     if (result.learned) {
       phase = "cheer";
       el.card.className = "card right";
-      setFeedback(state.insane ? "🔥" : "🏆", state.insane ? "You beat insane mode!" : "You learned the whole multiplication table!",
+      setFeedback(state.insane ? "🔥" : "🏆", state.insane ? "You beat insane mode!" : "You learned the whole " + GAME.table + "!",
         "Every fact, 3 times in a row" + (state.insane ? ", each in 5 seconds. 3-digit mode is unlocked" : "") + ". Amazing, " + current.name + "!");
       burst();
-      el.go.textContent = last ? "Finish ▶" : "Keep going ▶"; el.go.disabled = false;
+      round.pendingLevel = levelEnd;
+      el.go.textContent = levelEnd ? "Continue ▶" : last ? "Finish ▶" : "Keep going ▶"; el.go.disabled = false;
     } else if (result.correct) {
       phase = "right";
       el.card.className = "card right";
@@ -1637,10 +1864,13 @@ body {
       var msg = streakMsg ? streakMsg + " 🔥" : m[1];
       var sub = "+" + result.stars + " ⭐" + (untimed ? "" : " · " + secs);
       var wait = 1100;
-      if (result.change === "up") {
-        setFeedback(L.emoji, "Level " + (state.level + 1) + "! You made " + L.name + "!", L.tables.length ? "New facts unlocked: ×" + L.tables.join(" and ×") : (state.level === LEVELS.length - 1 ? "Top level! Every table, all mixed up." : "Mix-up level! All your tables together."));
+      if (levelEnd) {
+        // A short cheer, then the between-levels summary.
+        setFeedback(levelEnd === "up" ? L.emoji : "🏆", levelEnd === "up" ? "Level " + (state.level + 1) + "!" : "Another " + levelGoal(state.level) + " points!", sub);
         burst();
-        wait = 2600;
+        el.go.textContent = "…"; el.go.disabled = true;
+        nextTimer = setTimeout(function () { showLevelDone(levelEnd); }, 1300);
+        return;
       } else {
         setFeedback(m[0], msg, sub);
         if (streakMsg) wait = 1500;
@@ -1652,15 +1882,16 @@ body {
       el.card.className = "card wrong";
       el.timer.classList.add("hidden");
       var w = timeUp ? ["⏰", "Time's up!"] : rand(MSG[0]);
-      setFeedback(w[0], w[1] + " " + fact.a + " × " + fact.b + " = " + (fact.a * fact.b),
+      setFeedback(w[0], w[1] + " " + GAME.text(fact.a, fact.b) + " = " + GAME.answer(fact.a, fact.b),
         result.change === "down" ? "Let's practice some easier ones for a bit 🌱" : state.big ? "Big ones are tough. Keep going!" : "We'll try this one again soon.");
       el.go.textContent = last ? "Finish ▶" : "Next ▶"; el.go.disabled = false;
     }
   }
 
-  function burst() {
+  function burst(box) {
+    box = box || el.burst;
     var bits = ["🎉", "⭐", "🚀", "✨", "🎈", "🌟"];
-    el.burst.textContent = "";
+    box.textContent = "";
     for (var i = 0; i < 16; i++) {
       var sp = document.createElement("span");
       var ang = (Math.PI * 2 * i) / 16 + Math.random() * 0.4;
@@ -1669,9 +1900,9 @@ body {
       sp.style.setProperty("--dx", Math.round(Math.cos(ang) * dist) + "px");
       sp.style.setProperty("--dy", Math.round(Math.sin(ang) * dist) + "px");
       sp.style.setProperty("--rot", Math.round(Math.random() * 360 - 180) + "deg");
-      el.burst.appendChild(sp);
+      box.appendChild(sp);
     }
-    setTimeout(function () { el.burst.textContent = ""; }, 1500);
+    setTimeout(function () { box.textContent = ""; }, 1500);
   }
 
   function press(k) {
@@ -1683,6 +1914,7 @@ body {
   }
   function go() {
     if (phase === "ready" || phase === "report") startRound();
+    else if (phase === "cheer" && round.pendingLevel) { var c = round.pendingLevel; round.pendingLevel = null; showLevelDone(c); }
     else if (phase === "wrong" || phase === "cheer") { if (round.done) showReport(false); else ask(); }
     else if (phase === "ask") check();
   }
@@ -1693,7 +1925,12 @@ body {
   });
   el.go.addEventListener("click", function () { go(); });
   document.addEventListener("keydown", function (e) {
-    if (e.target && e.target.tagName === "INPUT") { bump(); return; }
+    if (e.target && e.target.tagName === "INPUT") { bump(); if (phase === "recover" && e.key === "Enter" && !el.recGo.disabled) recoverGo(); return; }
+    if (phase === "levelDone" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      if (e.key === "Enter") { levelContinue(); e.preventDefault(); }
+      else if (e.key === "s" || e.key === "S") { showReport(false); e.preventDefault(); }
+      return;
+    }
     if (phase === "home" || e.metaKey || e.ctrlKey || e.altKey) return;
     bump();
     if (e.key >= "0" && e.key <= "9" && e.key.length === 1) { press(e.key); e.preventDefault(); }
@@ -1723,19 +1960,24 @@ body {
   el.joinCancel.addEventListener("click", function () { showReport(false, false); });
   el.joinSave.addEventListener("click", joinSave);
   el.nickInput.addEventListener("input", function () { nickTyped(); });
+  el.recoverOpen.addEventListener("click", showRecover);
+  el.recNick.addEventListener("input", renderRecover);
+  el.recGo.addEventListener("click", recoverGo);
+  el.recCancel.addEventListener("click", function () { showHome(); });
+  el.ldGo.addEventListener("click", levelContinue);
+  el.ldStop.addEventListener("click", function () { if (phase === "levelDone") showReport(false); });
   el.switchBtn.addEventListener("click", function () { showHome(); });
 
   function start() {
     lbConnect();
     players = load();
     showHome();
-    if (CLOUD_ON) connectCloud(); else cloud.state = "off";
   }
   var hot = window.claude && window.claude.hot;
   if (hot && hot.ready) hot.ready(start); else start();
 
   // Exposed for a quick logic check only.
-  window.__tts = { pickFact: pickFact, grade: grade, freshState: freshState, LEVELS: LEVELS, learnedCount: learnedCount };
+  window.__tts = { pickFact: pickFact, grade: grade, freshState: freshState, LEVELS: LEVELS, learnedCount: learnedCount, levelGoal: levelGoal };
 })();
 </script>
 </body>

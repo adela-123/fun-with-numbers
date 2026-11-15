@@ -56,3 +56,14 @@ export function nicknameProblem(raw) {
   if (isBlocked(nick)) return "Please pick a different nickname.";
   return null;
 }
+
+// Recovery words: a player picks one adjective and one animal. With their nickname, they
+// bring the player (and all their progress) back on another device.
+export const ADJECTIVES = [
+  "fuzzy", "sunny", "brave", "happy", "sleepy", "bouncy", "clever", "gentle", "jolly", "lucky",
+  "mighty", "quiet", "speedy", "sparkly", "silly", "swift", "tiny", "giant", "curious", "friendly",
+];
+export const ANIMALS = [
+  "bear", "otter", "panda", "tiger", "koala", "penguin", "dolphin", "rabbit", "turtle", "falcon",
+  "giraffe", "zebra", "lion", "fox", "owl", "whale", "puppy", "kitten", "hedgehog", "octopus",
+];
