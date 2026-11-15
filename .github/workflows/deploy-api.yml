@@ -79,3 +79,10 @@ jobs:
           URL="$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)"
           echo "### Leaderboard API" >> "$GITHUB_STEP_SUMMARY"
           echo "Deployed to: ${URL:-see the log above}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check the live service answers
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          URL="$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)"
+          curl -fsS -H "Origin: https://adela-123.github.io" "$URL/health"
+          curl -fsS -H "Origin: https://adela-123.github.io" "$URL/board" > /dev/null && echo " board OK"

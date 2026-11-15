@@ -1035,7 +1035,7 @@ body {
   // ---------- Public leaderboard ----------
   // Talks to the leaderboard service (worker/ in the repository). Players opt in per player:
   // their emoji, nickname and the times below are the only things ever sent.
-  var LB_API = (window.TTS_API || "").replace(/\/+$/, "");
+  var LB_API = (window.TTS_API || "https://fun-with-numbers-api.adelakabiljo.workers.dev").replace(/\/+$/, "");
   var LB_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
   var lb = { ok: false, err: "" };
   var lbBack = "home";
