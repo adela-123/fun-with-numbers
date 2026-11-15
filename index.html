@@ -373,7 +373,7 @@ body {
   </form>
   <button class="key lb-open" type="button" id="boardOpen" hidden>🏆 Leaderboard</button>
   <button class="key lb-open" type="button" id="howOpen">📖 How to play</button>
-  <button class="link" type="button" id="recoverOpen" hidden>Recover my account</button>
+  <button class="link" type="button" id="recoverOpen" hidden>Use account from another device</button>
 </main>
 
 <main class="game how" id="howto" hidden>
@@ -436,8 +436,17 @@ body {
     <ul>
       <li>The leaderboard is a 10 × 10 grid showing who is fastest at each fact right now.</li>
       <li>Joining is up to you. You can join once 2 facts count: answer a fact right 2 times in a row to make it count.</li>
-      <li>You pick an emoji, a nickname, and two <strong>recovery words</strong>. Write the words down: with your nickname, they bring your account back on another device using <strong>Recover my account</strong>.</li>
+      <li>You pick an emoji, a nickname, and two <strong>changing device words</strong>.</li>
       <li>Only times from the last 2 weeks count, so keep playing to hold your squares!</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>📱 Move to another device</h2>
+    <ul>
+      <li>Players on the leaderboard can move to another device with all their stars, levels and charts.</li>
+      <li>On the new device, tap <strong>Use account from another device</strong> and enter your nickname and your changing device words. You can find the words on your stats page (the 📊 button).</li>
+      <li>After moving, the leaderboard name works on the new device only.</li>
     </ul>
   </section>
 
@@ -452,22 +461,22 @@ body {
 </main>
 
 <main class="game" id="recover" hidden>
-  <h1 class="report-title">Recover my account</h1>
-  <p class="report-line">Enter the leaderboard nickname and pick the two recovery words chosen when the player joined. Their stars, levels and charts come back on this device.</p>
+  <h1 class="report-title">Use account from another device</h1>
+  <p class="report-line">Enter your leaderboard nickname and pick your two changing device words. You'll find them on your stats page on the other device. Your stars, levels and charts will move to this device.</p>
   <section class="panel">
     <h2><label for="recNick">Leaderboard nickname</label></h2>
     <input class="nick-input" id="recNick" type="text" maxlength="18" autocomplete="off" spellcheck="false" autocapitalize="words">
   </section>
   <section class="panel">
-    <h2>First recovery word</h2>
-    <div class="word-pick" id="recAdj" role="radiogroup" aria-label="First recovery word"></div>
-    <h2>Second recovery word</h2>
-    <div class="word-pick" id="recAnimal" role="radiogroup" aria-label="Second recovery word"></div>
+    <h2>First word</h2>
+    <div class="word-pick" id="recAdj" role="radiogroup" aria-label="First word"></div>
+    <h2>Second word</h2>
+    <div class="word-pick" id="recAnimal" role="radiogroup" aria-label="Second word"></div>
   </section>
   <p class="nick-status" id="recStatus" aria-live="polite"></p>
   <div class="report-actions">
     <div class="action-row">
-      <button class="key go" type="button" id="recGo" disabled>Recover ▶</button>
+      <button class="key go" type="button" id="recGo" disabled>Move here ▶</button>
       <button class="key" type="button" id="recCancel">Cancel</button>
     </div>
   </div>
@@ -519,10 +528,10 @@ body {
     <p class="nick-status" id="nickStatus" aria-live="polite"></p>
   </section>
   <section class="panel" id="wordsPanel">
-    <h2>Your recovery words</h2>
-    <p>Pick one word from each row. Only you see them. With your nickname, they bring this player back if you change devices.</p>
-    <div class="word-pick" id="adjPick" role="radiogroup" aria-label="First recovery word"></div>
-    <div class="word-pick" id="animalPick" role="radiogroup" aria-label="Second recovery word"></div>
+    <h2>Your changing device words</h2>
+    <p>Pick one word from each row. Only you see them. You'll need them, with your nickname, to move to another device.</p>
+    <div class="word-pick" id="adjPick" role="radiogroup" aria-label="First word"></div>
+    <div class="word-pick" id="animalPick" role="radiogroup" aria-label="Second word"></div>
     <p class="nick-status ok" id="wordsNote" aria-live="polite"></p>
   </section>
   <div class="report-actions">
@@ -932,7 +941,7 @@ body {
     box.setAttribute("role", "alertdialog");
     box.appendChild(node("h2", "", "Delete " + p.name + "'s account?"));
     var what = "This removes all of " + p.name + "'s stars, levels and charts from this device";
-    what += p.pub ? ", and their leaderboard name " + p.pub.emoji + " " + p.pub.nickname + " with everything saved online. Their recovery words will stop working." : ".";
+    what += p.pub ? ", and their leaderboard name " + p.pub.emoji + " " + p.pub.nickname + " with everything saved online. Their changing device words will stop working." : ".";
     box.appendChild(node("p", "strong", what));
     box.appendChild(node("p", "", "This can't be undone."));
     var status = node("p", "nick-status bad", "");
@@ -1251,7 +1260,7 @@ body {
   // When the service no longer knows this player's key (another device recovered it, or it was removed).
   function lostPub(p) {
     p.pub = null; saveLocal();
-    lb.err = "This leaderboard name is now used on another device, or was removed. You can join again, or recover it with your nickname and recovery words.";
+    lb.err = "This leaderboard name is now used on another device, or was removed. You can join again, or move it back with \"Use account from another device\".";
   }
 
   function lbPost(p) {
@@ -1287,20 +1296,6 @@ body {
     var row = node("div", "lb-actions");
     if (who.pub) {
       p.appendChild(node("p", "strong", "You're on the leaderboard as " + who.pub.emoji + " " + who.pub.nickname + "."));
-      if (who.pub.words) {
-        var wordsLine = node("p", "", "");
-        wordsLine.hidden = true;
-        wordsLine.textContent = "Your recovery words are \"" + who.pub.words.adj + " " + who.pub.words.animal + "\". With your nickname, " + who.pub.nickname + ", they bring this player back on another device.";
-        var show = lbButton("Show my recovery words", function () {
-          wordsLine.hidden = !wordsLine.hidden;
-          show.textContent = wordsLine.hidden ? "Show my recovery words" : "Hide my recovery words";
-        });
-        row.appendChild(show);
-        p.appendChild(wordsLine);
-      } else {
-        p.appendChild(node("p", "strong", "Choose recovery words so you can bring this player back if you change devices."));
-        row.appendChild(lbButton("Choose recovery words", function () { showJoin("words"); }));
-      }
       row.appendChild(lbButton("See leaderboard", function () { lbBack = "report"; showBoard(); }));
       row.appendChild(lbButton("Change emoji or name", function () { showJoin("edit"); }));
       var leave = lbButton("Leave", function () {
@@ -1330,6 +1325,34 @@ body {
     }
     p.appendChild(row);
     if (lb.err) p.appendChild(node("p", "", lb.err));
+    return p;
+  }
+
+  // Report section: how to play as this player on another device.
+  function movePanel() {
+    var p = node("section", "panel"), who = current;
+    p.appendChild(node("h2", "", "📱 Move to another device"));
+    if (!who.pub) {
+      p.appendChild(node("p", "", "To move " + who.name + " to another device, join the public leaderboard first. You'll pick two " + "changing device words" + " when you join."));
+      return p;
+    }
+    var row = node("div", "lb-actions");
+    if (who.pub.words) {
+      p.appendChild(node("p", "", "On the other device, open the game, tap \"Use account from another device\", and enter your nickname " + who.pub.nickname + " and your " + "changing device words" + "."));
+      var wordsLine = node("p", "strong", "Your changing device words: \"" + who.pub.words.adj + " " + who.pub.words.animal + "\"");
+      wordsLine.hidden = true;
+      var show = lbButton("Show my changing device words", function () {
+        wordsLine.hidden = !wordsLine.hidden;
+        show.textContent = wordsLine.hidden ? "Show my changing device words" : "Hide my changing device words";
+      });
+      row.appendChild(show);
+      p.appendChild(row);
+      p.appendChild(wordsLine);
+    } else {
+      p.appendChild(node("p", "strong", "Pick your " + "changing device words" + " so you can play as " + who.name + " on another device."));
+      row.appendChild(lbButton("Pick my changing device words", function () { showJoin("words"); }));
+      p.appendChild(row);
+    }
     return p;
   }
 
@@ -1440,9 +1463,9 @@ body {
     var pub = current.pub;
     join.mode = mode;
     join.adj = ""; join.animal = "";
-    el.joinTitle.textContent = mode === "edit" ? "Change emoji or nickname" : mode === "words" ? "Choose recovery words" : "Join the leaderboard";
+    el.joinTitle.textContent = mode === "edit" ? "Change emoji or nickname" : mode === "words" ? "Pick your changing device words" : "Join the leaderboard";
     el.joinIntro.textContent = mode === "words"
-      ? "Pick one word from each list. With your nickname, they bring this player back on another device."
+      ? "Pick one word from each row. You'll need them, with your nickname, to move to another device."
       : "Pick an emoji and a nickname. Everyone who opens the game will see them, so don't use your real full name.";
     el.joinSave.textContent = mode === "join" ? "Join ▶" : "Save ▶";
     el.emojiPanel.hidden = mode === "words";
@@ -1468,7 +1491,7 @@ body {
   }
   function wordsPicked() {
     el.wordsNote.textContent = join.adj && join.animal
-      ? "Your recovery words: \"" + join.adj + " " + join.animal + "\". Write them down somewhere safe!"
+      ? "Your changing device words: \"" + join.adj + " " + join.animal + "\". You can find them in your stats page later."
       : "";
     renderJoinSave();
   }
@@ -1593,7 +1616,7 @@ body {
       gs(p);
       p.pub = pub;
       saveLocal();
-      showHome("Welcome back, " + p.name + "! Your stars, levels and charts are back on this device.");
+      showHome("Welcome, " + p.name + "! Your stars, levels and charts are now on this device.");
     }).catch(function () {
       el.recStatus.className = "nick-status bad";
       el.recStatus.textContent = "Couldn't reach the leaderboard. Try again in a moment.";
@@ -1686,6 +1709,7 @@ body {
     var tables = tablesPanel(); if (tables) body.appendChild(tables);
     body.appendChild(speedPanel());
     body.appendChild(chartPanel());
+    if (lb.ok) body.appendChild(movePanel());
 
     el.againBtn.textContent = (round && round.n ? "Play again as " : "Play as ") + who + " ▶";
     if (!keepScroll) window.scrollTo(0, 0);
