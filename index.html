@@ -258,6 +258,15 @@ body {
 .bar div { height: 100%; background: var(--marker); }
 .report-actions { display: flex; flex-direction: column; gap: 10px; align-items: center; padding-bottom: 12px; }
 .report-actions .key.go { width: 100%; }
+.action-row { display: flex; gap: 10px; width: 100%; }
+.action-row .key.go { flex: 2 1 0; }
+.action-row .key:not(.go) { flex: 1 1 0; font-size: 22px; min-height: 60px; }
+.how h2 { font-size: 22px; }
+.how ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 16px; }
+.how li strong { font-weight: 700; }
+.how table { border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
+.how td, .how th { padding: 3px 10px 3px 0; text-align: left; vertical-align: top; }
+.how th { color: var(--muted); font-weight: 700; }
 .cloud { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
 .report-btn { font-size: 20px; padding: 0 10px; min-width: 52px; }
 
@@ -363,11 +372,87 @@ body {
     </div>
   </form>
   <button class="key lb-open" type="button" id="boardOpen" hidden>🏆 Leaderboard</button>
-  <button class="link" type="button" id="recoverOpen" hidden>I already have a leaderboard name</button>
+  <button class="key lb-open" type="button" id="howOpen">📖 How to play</button>
+  <button class="link" type="button" id="recoverOpen" hidden>Recover my account</button>
+</main>
+
+<main class="game how" id="howto" hidden>
+  <h1 class="report-title">📖 How to play</h1>
+  <p class="report-line">Practice the times tables from 1 × 1 to 10 × 10. The game gets harder as you get better, and easier if you need more practice.</p>
+
+  <section class="panel">
+    <h2>Playing</h2>
+    <ul>
+      <li>Pick your name on the start screen, or type a new one, then press <strong>Play</strong>.</li>
+      <li>After a <strong>3, 2, 1, Go!</strong> countdown, type the answer with the number keys and press <strong>Enter</strong> or <strong>Check</strong>.</li>
+      <li>You find out straight away if it's right. A green card means right, a red card shows the correct answer.</li>
+      <li>Keep going as long as you like. Press <strong>S</strong> or <strong>Stop</strong> to finish and see your report.</li>
+      <li>If nobody presses anything for 45 seconds, the game stops by itself and keeps your stars.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>⭐ Stars for speed</h2>
+    <table>
+      <tr><th>Right in…</th><th>You get</th></tr>
+      <tr><td>5 seconds or less</td><td>⭐⭐⭐</td></tr>
+      <tr><td>5 to 8 seconds</td><td>⭐⭐</td></tr>
+      <tr><td>more than 8 seconds</td><td>⭐</td></tr>
+    </table>
+    <p>The three stars above each question fade as time passes, so you can see how many are left.</p>
+  </section>
+
+  <section class="panel">
+    <h2>📈 Levels</h2>
+    <ul>
+      <li>The <strong>Next level</strong> bar fills as you answer: a fast right answer adds the most, and a wrong answer takes some away.</li>
+      <li>There are <strong>50 levels</strong>. New tables join as you go up: ×1, ×10, ×2, ×5, ×3, ×4, ×6, ×9, ×7 and finally ×8 at level 17. The levels in between mix all your tables together.</li>
+      <li>After every level you get a <strong>summary</strong> and a break. Press <strong>Enter</strong> to keep playing, or <strong>S</strong> to stop.</li>
+      <li>If you get a lot wrong, you go back a level for a bit of extra practice.</li>
+      <li>At <strong>level 50</strong> you stay at the top, and every 30 points brings another summary.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>★ Your chart</h2>
+    <ul>
+      <li>Answer a fact right <strong>3 times in a row</strong> to earn its ★ on your multiplication chart. 3 × 7 and 7 × 3 are separate facts.</li>
+      <li>Facts with a ★ still come back now and then, but much less often than the ones you're still learning.</li>
+      <li>Your report (the 📊 button) shows the chart, your speed on every fact, and which facts need practice.</li>
+      <li>Star all 100 facts to learn the whole multiplication table! 🏆</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>🔥 Insane mode</h2>
+    <ul>
+      <li>Turn it on before you press Play. Each question has a <strong>5-second fuse</strong>, and only answers in time count.</li>
+      <li>It has its own chart of stars. Star every fact in insane mode to unlock <strong>🧮 3-digit mode</strong>, with big problems like 347 × 6.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>🏆 Leaderboard</h2>
+    <ul>
+      <li>The leaderboard is a 10 × 10 grid showing who is fastest at each fact right now.</li>
+      <li>Joining is up to you. You can join once 2 facts count: answer a fact right 2 times in a row to make it count.</li>
+      <li>You pick an emoji, a nickname, and two <strong>recovery words</strong>. Write the words down: with your nickname, they bring your account back on another device using <strong>Recover my account</strong>.</li>
+      <li>Only times from the last 2 weeks count, so keep playing to hold your squares!</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>🔊 Music</h2>
+    <p>Music plays while you answer. Tap 🔊 at the top to turn it off.</p>
+  </section>
+
+  <div class="report-actions">
+    <button class="key go" type="button" id="howBack">Back ▶</button>
+  </div>
 </main>
 
 <main class="game" id="recover" hidden>
-  <h1 class="report-title">Bring a player back</h1>
+  <h1 class="report-title">Recover my account</h1>
   <p class="report-line">Enter the leaderboard nickname and pick the two recovery words chosen when the player joined. Their stars, levels and charts come back on this device.</p>
   <section class="panel">
     <h2><label for="recNick">Leaderboard nickname</label></h2>
@@ -381,8 +466,10 @@ body {
   </section>
   <p class="nick-status" id="recStatus" aria-live="polite"></p>
   <div class="report-actions">
-    <button class="key go" type="button" id="recGo" disabled>Bring my player back ▶</button>
-    <button class="link" type="button" id="recCancel">Cancel</button>
+    <div class="action-row">
+      <button class="key go" type="button" id="recGo" disabled>Recover ▶</button>
+      <button class="key" type="button" id="recCancel">Cancel</button>
+    </div>
   </div>
 </main>
 
@@ -799,7 +886,7 @@ body {
   }
 
   // Show one screen and hide the rest.
-  var SCREENS = ["home", "play", "report", "board", "join", "recover", "levelDone"];
+  var SCREENS = ["home", "play", "report", "board", "join", "recover", "levelDone", "howto"];
   function screen(name) { SCREENS.forEach(function (id) { $(id).hidden = id !== name; }); }
 
   function newId() { return "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
@@ -890,7 +977,7 @@ body {
   function bump() {
     clearTimeout(idleTimer);
     // The between-levels summary is a break screen: it waits as long as it takes.
-    if (phase !== "home" && phase !== "levelDone") idleTimer = setTimeout(function () {
+    if (phase !== "home" && phase !== "levelDone" && phase !== "howto") idleTimer = setTimeout(function () {
       var playing = isPlaying();
       var who = current.name;
       finishRound();
@@ -1990,6 +2077,8 @@ body {
   el.joinSave.addEventListener("click", joinSave);
   el.nickInput.addEventListener("input", function () { nickTyped(); });
   el.recoverOpen.addEventListener("click", showRecover);
+  $("howOpen").addEventListener("click", function () { current = null; state = null; showLbScreen("howto"); });
+  $("howBack").addEventListener("click", function () { showHome(); });
   el.recNick.addEventListener("input", renderRecover);
   el.recGo.addEventListener("click", recoverGo);
   el.recCancel.addEventListener("click", function () { showHome(); });
