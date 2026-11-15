@@ -1037,6 +1037,7 @@ body {
   // their emoji, nickname and the times below are the only things ever sent.
   var LB_API = (window.TTS_API || "https://fun-with-numbers-api.adelakabiljo.workers.dev").replace(/\/+$/, "");
   var LB_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+  var LB_MIN_FACTS = 2; // facts that must count before a player can join
   var lb = { ok: false, err: "" };
   var lbBack = "home";
 
@@ -1114,9 +1115,15 @@ body {
       });
       row.appendChild(leave);
     } else {
+      var ready = boardTimes(who.s).length;
       p.appendChild(node("p", "strong", "Not on the public leaderboard."));
-      p.appendChild(node("p", "", "Joining shows an emoji and a nickname you choose, and your fastest facts, to everyone who opens the game."));
-      row.appendChild(lbButton("Join", function () { showJoin(); }));
+      if (ready >= LB_MIN_FACTS) {
+        p.appendChild(node("p", "", "Joining shows an emoji and a nickname you choose, and your fastest facts, to everyone who opens the game."));
+        row.appendChild(lbButton("Join", function () { showJoin(); }));
+      } else {
+        // Joining with nothing to show would put an empty row on the board, so wait until a few facts count.
+        p.appendChild(node("p", "", "You can join once " + LB_MIN_FACTS + " facts are ready: answer a fact right 3 times in a row to make it ready. Ready so far: " + ready + " of " + LB_MIN_FACTS + "."));
+      }
       row.appendChild(lbButton("See leaderboard", function () { lbBack = "report"; showBoard(); }));
     }
     p.appendChild(row);
