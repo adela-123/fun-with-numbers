@@ -173,7 +173,10 @@ body {
   font-size: 24px; padding: 8px 16px 4px; text-align: left;
 }
 .player small { font-family: var(--body); font-weight: 400; font-size: 15px; color: var(--muted); }
-.remove { font-size: 15px; font-family: var(--body); font-weight: 700; padding: 0 12px; min-width: 52px; color: var(--muted); }
+.remove { font-size: 14px; font-family: var(--body); font-weight: 700; padding: 0 10px; min-width: 52px; max-width: 92px; line-height: 1.15; color: var(--muted); }
+.confirm { border-color: var(--miss); }
+.key.danger { background: var(--miss); border-color: var(--miss); color: #fff; }
+#notice:empty, .confirm .nick-status:empty { display: none; }
 .new-player { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
 .new-player label { font-family: var(--display); font-weight: 600; font-size: 20px; }
 .new-row { display: flex; gap: 8px; }
@@ -820,21 +823,14 @@ body {
       b.appendChild(nm); b.appendChild(info);
       b.addEventListener("click", function () { choose(p); });
       var x = document.createElement("button"); x.type = "button"; x.className = "key remove";
-      x.textContent = "✕"; x.setAttribute("aria-label", "Remove " + p.name);
-      x.addEventListener("click", function () {
-        if (armed === p) {
-          armed = null; players.splice(players.indexOf(p), 1); saveLocal();
-          if (p.pub && lb.ok) api("/leave", { id: p.pub.id, key: p.pub.key }).catch(function () {});
-          showHome();
-        }
-        else { armed = p; showHome(); }
-      });
-      if (armed === p) { x.textContent = "Erase?"; }
+      x.textContent = "Delete account"; x.setAttribute("aria-label", "Delete " + p.name + "'s account");
+      x.addEventListener("click", function () { armed = p; showHome(); });
       var rp = document.createElement("button"); rp.type = "button"; rp.className = "key report-btn";
       rp.textContent = "📊"; rp.setAttribute("aria-label", "Report for " + p.name);
       rp.addEventListener("click", function () { current = p; state = gs(p); armed = null; round = null; showReport(false); });
       row.appendChild(b); row.appendChild(rp); row.appendChild(x);
       el.players.appendChild(row);
+      if (armed === p) el.players.appendChild(deleteConfirm(p));
     });
     el.whoLabel.hidden = players.length === 0;
     el.boardOpen.hidden = !lb.ok;
@@ -842,6 +838,39 @@ body {
     el.newLabel.textContent = players.length ? "Or add a new player" : "What is your name?";
     el.newName.value = "";
   }
+  // Deleting asks first, and says exactly what goes: everything on this device, plus the
+  // leaderboard entry and the saved copy online for players who joined the leaderboard.
+  function deleteConfirm(p) {
+    var box = node("section", "panel confirm");
+    box.setAttribute("role", "alertdialog");
+    box.appendChild(node("h2", "", "Delete " + p.name + "'s account?"));
+    var what = "This removes all of " + p.name + "'s stars, levels and charts from this device";
+    what += p.pub ? ", and their leaderboard name " + p.pub.emoji + " " + p.pub.nickname + " with everything saved online. Their recovery words will stop working." : ".";
+    box.appendChild(node("p", "strong", what));
+    box.appendChild(node("p", "", "This can't be undone."));
+    var status = node("p", "nick-status bad", "");
+    var row = node("div", "lb-actions");
+    var yes = node("button", "key danger", "Yes, delete"); yes.type = "button";
+    var no = node("button", "key", "Cancel"); no.type = "button";
+    no.addEventListener("click", function () { armed = null; showHome(); });
+    yes.addEventListener("click", function () {
+      function gone() { armed = null; players.splice(players.indexOf(p), 1); saveLocal(); showHome(p.name + "'s account was deleted."); }
+      if (!p.pub) { gone(); return; }
+      // Remove the online entry first, so nothing is left behind on the leaderboard.
+      yes.disabled = no.disabled = true; status.textContent = "Deleting…";
+      api("/leave", { id: p.pub.id, key: p.pub.key }).then(function (r) {
+        if (r.status === 200) gone();
+        else throw new Error("refused");
+      }).catch(function () {
+        yes.disabled = no.disabled = false;
+        status.textContent = "Couldn't reach the leaderboard, so nothing was deleted. Try again when you're online.";
+      });
+    });
+    row.appendChild(yes); row.appendChild(no);
+    box.appendChild(row); box.appendChild(status);
+    return box;
+  }
+
   function choose(p) {
     current = p; state = gs(p); armed = null;
     screen("play");
