@@ -1,0 +1,4 @@
+// Words not allowed in public nicknames. Stored ROT13-encoded so the list doesn't read as
+// plain text in the source; name-rules.js decodes it.
+export const SUBSTRING_WORDS = ["shpx", "shx", "spx", "cuhpx", "fuvg", "fuyg", "ovgpu", "ovngpu", "phag", "chffl", "nffubyr", "nefrubyr", "onfgneq", "fyhg", "juber", "cbea", "cravf", "intvan", "qvyqb", "betnfz", "obbo", "avtt", "snttbg", "ergneq", "genaal", "xvxr", "jrgonpx", "anmv", "uvgyre", "ubeal", "pbpnvar", "zheqre", "fhvpvqr", "znfgheo", "oybjwbo", "unaqwbo", "wvmm", "grfgvpyr", "fpebghz", "obyybpx", "jnax", "gjng", "zvys", "uragnv", "ahqr", "anxrq", "frkl"];
+export const WHOLE_WORDS = ["nff", "nefr", "pbpx", "qvpx", "gvg", "gvgf", "frk", "encr", "phz", "nany", "nahf", "snt", "fcvp", "puvax", "tbbx", "pbba", "qlxr", "xvyy", "xvyyre", "jrrq", "zrgu", "urebva", "qeht", "qehtf", "penc", "qnza", "uryy", "cvff", "cbbc", "sneg", "ohgg", "obbgl", "ohz", "ubr", "ubrf", "gubg", "abo", "xabo", "xxx", "vfvf"];

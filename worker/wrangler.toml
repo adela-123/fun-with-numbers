@@ -1,0 +1,15 @@
+name = "fun-with-numbers-api"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[vars]
+# Only the game's own web address may call the endpoint from a browser.
+ALLOWED_ORIGINS = "https://adela-123.github.io"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "fun-with-numbers"
+# Filled in automatically by the deploy workflow (.github/workflows/deploy-api.yml).
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"

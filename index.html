@@ -271,6 +271,35 @@ body {
 .fuse { width: 70%; height: 12px; border: 2px solid var(--ink); border-radius: 999px; overflow: hidden; background: var(--card); margin: 8px 0; }
 .fuse i { display: block; height: 100%; width: 100%; background: var(--miss); }
 
+/* Leaderboard */
+.lb-open { font-size: 22px; padding: 10px 16px 6px; }
+.lb-grid .cell { font-size: 17px; }
+.lb-grid .cell.mine { outline: 3px solid var(--accent); outline-offset: -3px; }
+.lb-grid .cell.sel { outline: 3px solid var(--ink); outline-offset: 1px; }
+.legend-list { display: flex; flex-direction: column; gap: 6px; }
+.legend-row { display: flex; align-items: center; gap: 10px; font-size: 17px; }
+.legend-row .em { font-size: 24px; width: 32px; text-align: center; }
+.legend-row .nm { flex: 1; font-weight: 700; overflow-wrap: anywhere; }
+.legend-row .ct { color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.emoji-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 6px; }
+.emoji-pick button {
+  font-size: 26px; line-height: 1; padding: 6px 0; border-radius: 12px; cursor: pointer;
+  background: var(--card); border: 2px solid var(--grid);
+}
+.emoji-pick button[aria-checked="true"] { border-color: var(--accent); background: var(--paper); box-shadow: 0 0 0 2px var(--accent); }
+.emoji-pick button:disabled { opacity: .25; filter: grayscale(1); cursor: default; }
+.emoji-pick button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.nick-input {
+  font: inherit; font-size: 20px; color: var(--ink); background: var(--card);
+  border: 3px solid var(--ink); border-radius: 16px; padding: 10px 14px; width: 100%;
+}
+.nick-input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.nick-status { min-height: 20px; }
+.nick-status.ok { color: var(--good) !important; font-weight: 700; }
+.nick-status.bad { color: var(--miss) !important; font-weight: 700; }
+.lb-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.lb-actions .key { font-size: 17px; padding: 8px 14px 4px; min-height: 0; }
+
 /* Level-up burst */
 .burst { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
 .burst span {
@@ -312,7 +341,44 @@ body {
       <button class="key go" type="submit" id="newGo">Start ▶</button>
     </div>
   </form>
+  <button class="key lb-open" type="button" id="boardOpen" hidden>🏆 Leaderboard</button>
   <p class="cloud" id="cloud"></p>
+</main>
+
+<main class="game" id="board" hidden>
+  <h1 class="report-title">🏆 Leaderboard</h1>
+  <p class="report-line" id="boardIntro">Who is fastest at each fact right now.</p>
+  <section class="panel">
+    <div class="grid10 lb-grid" id="boardGrid"></div>
+    <div class="readout" id="boardReadout">Tap a square to see who holds it.</div>
+    <p id="boardRules">A square counts once a player has answered that fact right 3 times in a row, using their recent time from the last 2 weeks. The faster of normal and insane mode counts. On a tie, whoever got there first keeps it.</p>
+  </section>
+  <section class="panel">
+    <h2>Players</h2>
+    <div class="legend-list" id="boardLegend"></div>
+  </section>
+  <div class="report-actions">
+    <button class="key go" type="button" id="boardBack">Back ▶</button>
+  </div>
+</main>
+
+<main class="game" id="join" hidden>
+  <h1 class="report-title" id="joinTitle">Join the leaderboard</h1>
+  <p class="report-line" id="joinIntro">Pick an emoji and a nickname. Everyone who opens the game will see them, so don't use your real full name.</p>
+  <section class="panel">
+    <h2>Your emoji</h2>
+    <div class="emoji-pick" id="emojiPick" role="radiogroup" aria-label="Choose your emoji"></div>
+    <p id="emojiNote">Grey ones are already taken.</p>
+  </section>
+  <section class="panel">
+    <h2><label for="nickInput">Your public nickname</label></h2>
+    <input class="nick-input" id="nickInput" type="text" maxlength="18" autocomplete="off" spellcheck="false" autocapitalize="words" placeholder="For example: Speedy Sam">
+    <p class="nick-status" id="nickStatus" aria-live="polite"></p>
+  </section>
+  <div class="report-actions">
+    <button class="key go" type="button" id="joinSave" disabled>Join ▶</button>
+    <button class="link" type="button" id="joinCancel">Cancel</button>
+  </div>
 </main>
 
 <main class="game" id="report" hidden>
@@ -435,7 +501,8 @@ body {
   // Insane mode keeps its own chart of stars, separate from the normal one.
   function facts(s) { return s.insane ? s.fi : s.f; }
   function allLearned(s) { return s.insane ? s.learnedI : s.learned; }
-  function isLearned(s, k) { var r = facts(s)[k]; return !!(r && r.c >= 3); }
+  // A star, once earned, stays even if a later review answer is wrong.
+  function isLearned(s, k) { var r = facts(s)[k]; return !!(r && (r.s || r.c >= 3)); }
   function learnedCount(s) {
     var n = 0;
     for (var a = 1; a <= 10; a++) for (var b = 1; b <= 10; b++) if (isLearned(s, keyOf(a, b))) n++;
@@ -459,17 +526,14 @@ body {
       }
     }
     var fresh = LEVELS[s.level].tables;
-    var seen, pool, total;
-    // A starred fact (3 right in a row) is never asked again. Try, in order: this level's
-    // unstarred facts; the same ignoring "just asked"; unstarred facts from any level;
-    // and only when the whole chart is starred, everything.
-    var tries = [[s.level, true, false], [s.level, false, false], [LEVELS.length - 1, false, false], [LEVELS.length - 1, false, true]];
-    for (var t = 0; t < tries.length; t++) {
-      build(tries[t][0], tries[t][1], tries[t][2]);
-      if (pool.length) break;
-    }
-    function build(topLevel, skipRecent, allowStarred) {
-      seen = {}; pool = []; total = 0;
+    var seen, pool, total, open;
+    // Starred facts (3 right in a row) still come up, but each is 10 times less likely than an
+    // unstarred one. When every fact at this level is starred, the next levels' facts join in.
+    build(s.level, true);
+    if (!open) build(LEVELS.length - 1, true);
+    if (!pool.length) build(LEVELS.length - 1, false);
+    function build(topLevel, skipRecent) {
+      seen = {}; pool = []; total = 0; open = 0;
       for (var l = 0; l <= topLevel; l++) {
         LEVELS[l].tables.forEach(function (x) {
           for (var o = 1; o <= 10; o++) { add(x, o); add(o, x); } // never a factor above 10
@@ -479,12 +543,12 @@ body {
         var k = keyOf(a, b);
         if (seen[k]) return;
         seen[k] = true;
-        if (!allowStarred && isLearned(s, k)) return;
         // Skip what was just asked, in either order.
         if (skipRecent && (s.recent.indexOf(k) !== -1 || s.recent.indexOf(keyOf(b, a)) !== -1)) return;
         var wt = (s.w[k] || 3) * (fresh.indexOf(a) !== -1 || fresh.indexOf(b) !== -1 ? 2 : 1);
         // Top level: the tough middle of the chart (6 to 9) comes up most.
         if (LEVELS[s.level].tough && a >= 6 && a <= 9 && b >= 6 && b <= 9) wt *= 2;
+        if (isLearned(s, k)) wt /= 10; else open++;
         pool.push({ a: a, b: b, wt: wt });
         total += wt;
       }
@@ -514,7 +578,8 @@ body {
     rec.n += 1;
     if (correct) {
       rec.r += 1; rec.c += 1;
-      if (!untimed) rec.t = rec.t ? rec.t * 0.6 + ms * 0.4 : ms;
+      if (rec.c >= 3) rec.s = true;
+      if (!untimed) { rec.t = rec.t ? rec.t * 0.6 + ms * 0.4 : ms; rec.at = Date.now(); }
     } else { rec.c = 0; }
     var learnedNow = false;
     if (!allLearned(s) && correct && learnedCount(s) === CHART_FACTS) {
@@ -558,7 +623,11 @@ body {
     pad: $("pad"), go: $("go"), stop: $("stop"), musicBtn: $("musicBtn"), roundInfo: $("roundInfo"),
     home: $("home"), play: $("play"), notice: $("notice"), players: $("players"),
     report: $("report"), reportBody: $("reportBody"), againBtn: $("againBtn"), switchBtn: $("switchBtn"), modeBtn: $("modeBtn"), modeBtn2: $("modeBtn2"), bigBtn: $("bigBtn"), bigBtn2: $("bigBtn2"), fuse: $("fuse"),
-    cloud: $("cloud"), whoLabel: $("whoLabel"), newForm: $("newForm"), newName: $("newName"), newLabel: $("newLabel")
+    cloud: $("cloud"), whoLabel: $("whoLabel"), boardOpen: $("boardOpen"),
+    board: $("board"), boardGrid: $("boardGrid"), boardReadout: $("boardReadout"), boardLegend: $("boardLegend"),
+    boardBack: $("boardBack"), boardIntro: $("boardIntro"),
+    join: $("join"), joinTitle: $("joinTitle"), emojiPick: $("emojiPick"), nickInput: $("nickInput"),
+    nickStatus: $("nickStatus"), joinSave: $("joinSave"), joinCancel: $("joinCancel"), newForm: $("newForm"), newName: $("newName"), newLabel: $("newLabel")
   };
   var digitKeys = Array.prototype.slice.call(el.pad.querySelectorAll("[data-k]"));
 
@@ -586,15 +655,19 @@ body {
     st.level = !raw.v ? FROM_5[Math.min(lv, 4)] : raw.v === 2 ? FROM_10[Math.min(lv, 9)] : Math.min(lv, LEVELS.length - 1);
     st.v = 3;
     st.retry = (st.retry || []).filter(function (r) { return r.a <= 10 && r.b <= 10; });
+    [st.f, st.fi].forEach(function (book) {
+      for (var k in book) if (book[k] && book[k].c >= 3) book[k].s = true;
+    });
     return st;
   }
+  function validPub(x) { return !!(x && typeof x.id === "string" && typeof x.key === "string" && typeof x.emoji === "string" && typeof x.nickname === "string"); }
   function validPlayer(p) { return p && typeof p.name === "string" && p.s && typeof p.s.level === "number"; }
   function load() {
     try {
       var d = JSON.parse(localStorage.getItem(STORE_KEY));
       if (d && Array.isArray(d.players)) {
         return d.players.filter(validPlayer).map(function (p) {
-          return { id: p.id || null, synced: !!p.synced, name: p.name, s: normState(p.s) };
+          return { id: p.id || null, synced: !!p.synced, name: p.name, s: normState(p.s), pub: validPub(p.pub) ? p.pub : null };
         });
       }
     } catch (e) {}
@@ -691,6 +764,7 @@ body {
     mergeCloud();
     renderCloud();
     el.play.hidden = true; el.report.hidden = true; el.home.hidden = false;
+    el.board.hidden = true; el.join.hidden = true;
     el.notice.hidden = !note; el.notice.textContent = note || "";
     el.players.textContent = "";
     players.forEach(function (p) {
@@ -706,6 +780,7 @@ body {
       x.addEventListener("click", function () {
         if (armed === p) {
           armed = null; players.splice(players.indexOf(p), 1); saveLocal();
+          if (p.pub && lb.ok) api("/leave", { id: p.pub.id, key: p.pub.key }).catch(function () {});
           if (cloud.db && cloud.state === "on" && p.id) cloud.db.collection("players").doc(p.id).delete().catch(function () {});
           showHome();
         }
@@ -719,12 +794,14 @@ body {
       el.players.appendChild(row);
     });
     el.whoLabel.hidden = players.length === 0;
+    el.boardOpen.hidden = !lb.ok;
     el.newLabel.textContent = players.length ? "Or add a new player" : "What is your name?";
     el.newName.value = "";
   }
   function choose(p) {
     current = p; state = p.s; armed = null;
     el.home.hidden = true; el.report.hidden = true; el.play.hidden = false;
+    el.board.hidden = true; el.join.hidden = true;
     showReady();
     bump();
   }
@@ -806,6 +883,7 @@ body {
     el.modeBtn.hidden = true; el.bigBtn.hidden = true;
     el.problem.classList.toggle("big", state.big);
     el.home.hidden = true; el.report.hidden = true; el.play.hidden = false;
+    el.board.hidden = true; el.join.hidden = true;
     el.stop.textContent = "Stop (press S)";
     startMusic();
     countdown();
@@ -907,6 +985,7 @@ body {
   function finishRound() {
     if (!round || round.saved || round.n === 0) return;
     round.saved = true;
+    if (current && current.pub) lbPost(current);
     if (round.timed && !round.big) {
       state.hist.push({ avg: Math.round(round.ms / round.timed), max: Math.round(round.max), ok: round.correct, n: round.n, i: round.insane ? 1 : 0, d: Date.now() });
       if (state.hist.length > 60) state.hist.shift();
@@ -953,6 +1032,255 @@ body {
   el.bigBtn.addEventListener("click", function () { toggleMode("big"); });
   el.bigBtn2.addEventListener("click", function () { toggleMode("big"); });
 
+  // ---------- Public leaderboard ----------
+  // Talks to the leaderboard service (worker/ in the repository). Players opt in per player:
+  // their emoji, nickname and the times below are the only things ever sent.
+  var LB_API = (window.TTS_API || "").replace(/\/+$/, "");
+  var LB_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+  var lb = { ok: false, err: "" };
+  var lbBack = "home";
+
+  function api(path, body) {
+    var ctl = typeof AbortController === "function" ? new AbortController() : null;
+    var timer = ctl ? setTimeout(function () { ctl.abort(); }, 8000) : null;
+    var opts = body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {};
+    if (ctl) opts.signal = ctl.signal;
+    return fetch(LB_API + path, opts).then(function (r) {
+      clearTimeout(timer);
+      return r.json().catch(function () { return {}; }).then(function (data) { return { status: r.status, data: data }; });
+    }, function (e) { clearTimeout(timer); throw e; });
+  }
+
+  function lbConnect() {
+    if (!LB_API || typeof fetch !== "function") return;
+    api("/health").then(function (r) {
+      if (r.status !== 200) return;
+      lb.ok = true;
+      if (phase === "home") el.boardOpen.hidden = false;
+    }).catch(function () {});
+  }
+
+  // A fact counts once it was answered at least 3 times and the last 3 were right, with a
+  // time from the last 2 weeks. The faster of normal and insane mode is used.
+  function boardTimes(s) {
+    var now = Date.now(), out = [];
+    for (var a = 1; a <= 10; a++) for (var b = 1; b <= 10; b++) {
+      var k = keyOf(a, b), best = null;
+      [s.f[k], s.fi[k]].forEach(function (r) {
+        if (!r || r.n < 3 || r.c < 3 || !r.t || !r.at || now - r.at > LB_WINDOW_MS) return;
+        if (!best || r.t < best.ms) best = { c: k, ms: Math.round(r.t), at: r.at };
+      });
+      if (best) out.push(best);
+    }
+    return out;
+  }
+
+  function lbPost(p) {
+    if (!lb.ok || !p || !p.pub) return Promise.resolve();
+    var pub = p.pub;
+    return api("/scores", { id: pub.id, key: pub.key, times: boardTimes(p.s) }).then(function (r) {
+      if (r.status === 403) { p.pub = null; saveLocal(); lb.err = "This player was removed from the leaderboard."; }
+      else lb.err = r.status === 200 ? "" : "The leaderboard didn't accept the latest times. They'll be sent again after the next round.";
+    }).catch(function () {
+      lb.err = "Couldn't reach the leaderboard. Times will be sent again after the next round.";
+    });
+  }
+
+  function lbButton(text, fn) {
+    var b = node("button", "key", text); b.type = "button";
+    b.addEventListener("click", fn);
+    return b;
+  }
+
+  function lbPanel() {
+    var p = node("section", "panel"), who = current;
+    p.appendChild(node("h2", "", "🏆 Public leaderboard"));
+    var row = node("div", "lb-actions");
+    if (who.pub) {
+      p.appendChild(node("p", "strong", "You're on the leaderboard as " + who.pub.emoji + " " + who.pub.nickname + "."));
+      row.appendChild(lbButton("See leaderboard", function () { lbBack = "report"; showBoard(); }));
+      row.appendChild(lbButton("Change emoji or name", function () { showJoin(); }));
+      var leave = lbButton("Leave", function () {
+        if (leave.dataset.armed !== "1") { leave.dataset.armed = "1"; leave.textContent = "Tap again to leave"; return; }
+        leave.disabled = true;
+        var pub = who.pub;
+        api("/leave", { id: pub.id, key: pub.key }).then(function () {
+          who.pub = null; saveLocal(); lb.err = "";
+          showReport(false, true);
+        }).catch(function () {
+          leave.disabled = false; leave.dataset.armed = ""; leave.textContent = "Leave";
+          lb.err = "Couldn't reach the leaderboard. Try again in a moment."; showReport(false, true);
+        });
+      });
+      row.appendChild(leave);
+    } else {
+      p.appendChild(node("p", "strong", "Not on the public leaderboard."));
+      p.appendChild(node("p", "", "Joining shows an emoji and a nickname you choose, and your fastest facts, to everyone who opens the game."));
+      row.appendChild(lbButton("Join", function () { showJoin(); }));
+      row.appendChild(lbButton("See leaderboard", function () { lbBack = "report"; showBoard(); }));
+    }
+    p.appendChild(row);
+    if (lb.err) p.appendChild(node("p", "", lb.err));
+    return p;
+  }
+
+  function showLbScreen(which) {
+    stopMusic(); clearTimers();
+    phase = which;
+    el.home.hidden = true; el.play.hidden = true; el.report.hidden = true;
+    el.board.hidden = which !== "board"; el.join.hidden = which !== "join";
+    bump();
+    window.scrollTo(0, 0);
+  }
+
+  function showBoard() {
+    showLbScreen("board");
+    el.boardGrid.textContent = "";
+    el.boardLegend.textContent = "";
+    el.boardReadout.textContent = "Loading the leaderboard…";
+    api("/board").then(function (r) {
+      if (phase !== "board") return;
+      if (r.status !== 200) throw new Error("bad");
+      renderBoard(r.data);
+    }).catch(function () {
+      if (phase === "board") el.boardReadout.textContent = "Couldn't load the leaderboard. Check the internet connection and try again.";
+    });
+  }
+
+  function renderBoard(d) {
+    var byId = {}, mine = {};
+    (d.players || []).forEach(function (p) { byId[p.id] = p; });
+    players.forEach(function (p) { if (p.pub) mine[p.pub.id] = true; });
+    var g = el.boardGrid, picked = null;
+    g.textContent = "";
+    g.appendChild(node("div", "head", "×"));
+    for (var h = 1; h <= 10; h++) g.appendChild(node("div", "head", String(h)));
+    for (var a = 1; a <= 10; a++) {
+      g.appendChild(node("div", "head", String(a)));
+      for (var b = 1; b <= 10; b++) g.appendChild(cell(a, b));
+    }
+    function cell(a, b) {
+      var c = d.cells && d.cells[keyOf(a, b)], who = c && byId[c.p];
+      var btn = node("button", "cell" + (who && mine[who.id] ? " mine" : ""), who ? who.emoji : "");
+      btn.type = "button";
+      var text = a + " × " + b + " = " + (a * b) + ": " + (who ? who.emoji + " " + who.nickname + " · " + secs(c.ms) : "nobody yet");
+      btn.setAttribute("aria-label", text); btn.title = text;
+      btn.addEventListener("click", function () {
+        if (picked) picked.classList.remove("sel");
+        picked = btn; btn.classList.add("sel");
+        el.boardReadout.textContent = text;
+      });
+      return btn;
+    }
+    var held = (d.players || []).length;
+    el.boardReadout.textContent = held ? "Tap a square to see who holds it." : "Nobody holds a square yet. Answer a fact right 3 times in a row to claim it!";
+    el.boardLegend.textContent = "";
+    (d.players || []).forEach(function (p) {
+      var r = node("div", "legend-row");
+      r.appendChild(node("span", "em", p.emoji));
+      r.appendChild(node("span", "nm", p.nickname + (mine[p.id] ? " (this device)" : "")));
+      r.appendChild(node("span", "ct", p.squares + (p.squares === 1 ? " square" : " squares")));
+      el.boardLegend.appendChild(r);
+    });
+    if (!held) el.boardLegend.appendChild(node("p", "", "No one is on the board yet."));
+  }
+
+  var join = { emoji: "", nickOk: false, checkTimer: null, seq: 0 };
+  function showJoin() {
+    showLbScreen("join");
+    var pub = current.pub;
+    el.joinTitle.textContent = pub ? "Change emoji or nickname" : "Join the leaderboard";
+    el.joinSave.textContent = pub ? "Save ▶" : "Join ▶";
+    join.emoji = pub ? pub.emoji : "";
+    el.nickInput.value = pub ? pub.nickname : "";
+    el.emojiPick.textContent = "";
+    el.nickStatus.textContent = ""; el.nickStatus.className = "nick-status";
+    join.nickOk = false;
+    renderJoinSave();
+    api("/taken" + (pub ? "?exclude=" + encodeURIComponent(pub.id) : "")).then(function (r) {
+      if (phase !== "join") return;
+      renderEmojis(r.data.all || [], r.data.emojis || []);
+    }).catch(function () {
+      if (phase === "join") el.nickStatus.textContent = "Couldn't reach the leaderboard. Check the internet connection and try again.";
+    });
+    if (el.nickInput.value) nickTyped(true);
+  }
+  function renderEmojis(all, taken) {
+    el.emojiPick.textContent = "";
+    if (taken.indexOf(join.emoji) !== -1) join.emoji = "";
+    all.forEach(function (em) {
+      var b = node("button", "", em);
+      b.type = "button";
+      b.setAttribute("role", "radio");
+      b.setAttribute("aria-checked", em === join.emoji ? "true" : "false");
+      if (taken.indexOf(em) !== -1) { b.disabled = true; b.title = "Taken"; b.setAttribute("aria-label", em + " taken"); }
+      b.addEventListener("click", function () {
+        join.emoji = em;
+        Array.prototype.forEach.call(el.emojiPick.children, function (x) { x.setAttribute("aria-checked", x === b ? "true" : "false"); });
+        renderJoinSave();
+      });
+      el.emojiPick.appendChild(b);
+    });
+    renderJoinSave();
+  }
+  function nickTyped(now) {
+    clearTimeout(join.checkTimer);
+    join.nickOk = false; renderJoinSave();
+    var v = el.nickInput.value.trim();
+    el.nickStatus.className = "nick-status";
+    if (!v) { el.nickStatus.textContent = ""; return; }
+    el.nickStatus.textContent = "Checking…";
+    var mySeq = ++join.seq;
+    join.checkTimer = setTimeout(function () {
+      var ex = current && current.pub ? "&exclude=" + encodeURIComponent(current.pub.id) : "";
+      api("/check?nickname=" + encodeURIComponent(v) + ex).then(function (r) {
+        if (mySeq !== join.seq || phase !== "join") return;
+        join.nickOk = !!(r.data && r.data.ok);
+        el.nickStatus.className = "nick-status " + (join.nickOk ? "ok" : "bad");
+        el.nickStatus.textContent = join.nickOk ? "✓ That nickname is free." : (r.data && r.data.reason) || "Please pick a different nickname.";
+        renderJoinSave();
+      }).catch(function () {
+        if (mySeq === join.seq) el.nickStatus.textContent = "Couldn't reach the leaderboard to check.";
+      });
+    }, now ? 0 : 350);
+  }
+  function renderJoinSave() { el.joinSave.disabled = !(join.emoji && join.nickOk); }
+
+  function joinSave() {
+    var who = current, pub = who.pub, nick = el.nickInput.value;
+    el.joinSave.disabled = true;
+    var req = pub
+      ? api("/profile", { id: pub.id, key: pub.key, emoji: join.emoji, nickname: nick })
+      : api("/join", { emoji: join.emoji, nickname: nick });
+    req.then(function (r) {
+      if (r.status === 200) {
+        who.pub = pub
+          ? { id: pub.id, key: pub.key, emoji: r.data.emoji, nickname: r.data.nickname }
+          : { id: r.data.id, key: r.data.key, emoji: r.data.emoji, nickname: r.data.nickname };
+        saveLocal(); lb.err = "";
+        lbBack = "report";
+        // Send this player's times first, so they're already on the board when it opens.
+        return lbPost(who).then(showBoard, showBoard);
+      }
+      var d = r.data || {};
+      if (d.field === "emoji") {
+        join.emoji = "";
+        el.nickStatus.className = "nick-status bad";
+        el.nickStatus.textContent = d.reason || "Someone just picked that emoji. Choose another.";
+        return api("/taken" + (pub ? "?exclude=" + encodeURIComponent(pub.id) : "")).then(function (t) { renderEmojis(t.data.all || [], t.data.emojis || []); });
+      }
+      if (r.status === 403) { who.pub = null; saveLocal(); }
+      join.nickOk = false;
+      el.nickStatus.className = "nick-status bad";
+      el.nickStatus.textContent = d.reason || "That didn't work. Try again.";
+      renderJoinSave();
+    }).catch(function () {
+      el.nickStatus.className = "nick-status bad";
+      el.nickStatus.textContent = "Couldn't reach the leaderboard. Try again in a moment.";
+      renderJoinSave();
+    });
+  }
+
   var lastStopped = false;
   function showReport(stoppedEarly, keepScroll) {
     lastStopped = !!stoppedEarly;
@@ -963,6 +1291,7 @@ body {
     clearTimers();
     bump();
     el.home.hidden = true; el.play.hidden = true; el.report.hidden = false;
+    el.board.hidden = true; el.join.hidden = true;
     var who = current.name, body = el.reportBody;
     body.textContent = "";
 
@@ -989,6 +1318,7 @@ body {
     }
 
     if (round && round.n) body.appendChild(roundPanel());
+    if (lb.ok) body.appendChild(lbPanel());
     var tables = tablesPanel(); if (tables) body.appendChild(tables);
     body.appendChild(speedPanel());
     body.appendChild(chartPanel());
@@ -1168,13 +1498,14 @@ body {
     }
     function cellFor(a, b) {
       var rec = facts(state)[keyOf(a, b)], mark = "", what = "not tried yet", cls = "cell";
-      if (rec && rec.c >= 3) { mark = "★"; what = "learned"; }
+      var starred = !!(rec && (rec.s || rec.c >= 3));
+      if (starred) { mark = "★"; what = rec.c >= 3 ? "learned" : "learned (last review was a miss)"; }
       else if (rec && rec.c > 0) { mark = "✓"; what = rec.c + " right in a row"; }
       else if (rec && rec.n > 0) { cls += " work"; mark = "!"; what = "needs practice"; }
       // Yellow for learned, green for on the way. Shade by typical answer time: bright is fast, dark is slow.
       var t = rec && rec.t ? rec.t : 0;
       var step = !t ? 0 : t <= 2000 ? 5 : t <= 3000 ? 4 : t <= 5000 ? 3 : t <= 8000 ? 2 : 1;
-      if (rec && rec.c >= 3) cls += " y" + step; else if (rec && rec.c > 0) cls += " g" + step;
+      if (starred) cls += " y" + step; else if (rec && rec.c > 0) cls += " g" + step;
       var cell = node("button", cls, mark);
       cell.type = "button";
       var text = a + " × " + b + " = " + (a * b) + ": " + what
@@ -1336,6 +1667,7 @@ body {
   });
   el.go.addEventListener("click", function () { go(); });
   document.addEventListener("keydown", function (e) {
+    if (e.target && e.target.tagName === "INPUT") { bump(); return; }
     if (phase === "home" || e.metaKey || e.ctrlKey || e.altKey) return;
     bump();
     if (e.key >= "0" && e.key <= "9" && e.key.length === 1) { press(e.key); e.preventDefault(); }
@@ -1360,9 +1692,15 @@ body {
     else showHome();
   });
   el.againBtn.addEventListener("click", startRound);
+  el.boardOpen.addEventListener("click", function () { lbBack = "home"; showBoard(); });
+  el.boardBack.addEventListener("click", function () { if (lbBack === "report" && current) showReport(false, false); else showHome(); });
+  el.joinCancel.addEventListener("click", function () { showReport(false, false); });
+  el.joinSave.addEventListener("click", joinSave);
+  el.nickInput.addEventListener("input", function () { nickTyped(); });
   el.switchBtn.addEventListener("click", function () { showHome(); });
 
   function start() {
+    lbConnect();
     players = load();
     showHome();
     if (CLOUD_ON) connectCloud(); else cloud.state = "off";

@@ -1,0 +1,82 @@
+name: Deploy leaderboard API
+
+# Publishes the Cloudflare Worker in worker/ whenever it changes on main.
+# Needs two repository secrets (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN   a Cloudflare API token that can edit Workers and D1
+#   CLOUDFLARE_ACCOUNT_ID  your Cloudflare account ID
+on:
+  push:
+    branches: [main]
+    paths: ["worker/**", ".github/workflows/deploy-api.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: worker
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CI: "true"
+    steps:
+      - name: Check that the Cloudflare secrets are set
+        id: secrets
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::warning::CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID is not set yet, so nothing was deployed."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.secrets.outputs.ready == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.secrets.outputs.ready == 'true'
+        with:
+          node-version: 22
+
+      - name: Install Wrangler
+        if: steps.secrets.outputs.ready == 'true'
+        run: npm ci
+
+      - name: Find or create the database
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          find_id() {
+            npx wrangler d1 list --json 2>/dev/null | node -e '
+              let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
+                const list = JSON.parse(s.slice(s.indexOf("[")));
+                const db = list.find(d => d.name === "fun-with-numbers");
+                if (db) process.stdout.write(db.uuid);
+              });'
+          }
+          ID="$(find_id)"
+          if [ -z "$ID" ]; then
+            npx wrangler d1 create fun-with-numbers
+            ID="$(find_id)"
+          fi
+          if [ -z "$ID" ]; then echo "::error::Could not find or create the D1 database."; exit 1; fi
+          sed -i "s/^database_id = .*/database_id = \"$ID\"/" wrangler.toml
+          echo "Using database $ID"
+
+      - name: Update the database tables
+        if: steps.secrets.outputs.ready == 'true'
+        run: npx wrangler d1 migrations apply fun-with-numbers --remote
+
+      - name: Deploy the Worker
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          npx wrangler deploy 2>&1 | tee deploy.log
+          URL="$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)"
+          echo "### Leaderboard API" >> "$GITHUB_STEP_SUMMARY"
+          echo "Deployed to: ${URL:-see the log above}" >> "$GITHUB_STEP_SUMMARY"
