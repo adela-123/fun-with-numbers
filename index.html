@@ -274,6 +274,7 @@ body {
 /* Leaderboard */
 .lb-open { font-size: 22px; padding: 10px 16px 6px; }
 .lb-grid .cell { font-size: 17px; }
+#boardReadout { white-space: pre-line; }
 .lb-grid .cell.mine { outline: 3px solid var(--accent); outline-offset: -3px; }
 .lb-grid .cell.sel { outline: 3px solid var(--ink); outline-offset: 1px; }
 .legend-list { display: flex; flex-direction: column; gap: 6px; }
@@ -1176,7 +1177,7 @@ body {
       btn.addEventListener("click", function () {
         if (picked) picked.classList.remove("sel");
         picked = btn; btn.classList.add("sel");
-        el.boardReadout.textContent = text;
+        el.boardReadout.textContent = text + yourTimes(a, b);
       });
       return btn;
     }
@@ -1191,6 +1192,23 @@ body {
       el.boardLegend.appendChild(r);
     });
     if (!held) el.boardLegend.appendChild(node("p", "", "No one is on the board yet."));
+  }
+
+  // The time of whoever is playing (or, from the start screen, everyone on this device) on one fact.
+  function yourTimes(a, b) {
+    var k = keyOf(a, b), list = current ? [current] : players, lines = [];
+    list.forEach(function (p) {
+      var best = null, counts = false, now = Date.now();
+      [p.s.f[k], p.s.fi[k]].forEach(function (r) {
+        if (!r || !r.t) return;
+        if (!best || r.t < best) best = r.t;
+        if (r.n >= LB_STREAK && r.c >= LB_STREAK && r.at && now - r.at <= LB_WINDOW_MS) counts = true;
+      });
+      var who = current ? "Your time" : p.name;
+      if (!best) { if (current) lines.push(who + ": not answered yet"); return; }
+      lines.push(who + ": " + secs(best) + (counts ? "" : " (not counting yet: needs " + LB_STREAK + " right in a row)"));
+    });
+    return lines.length ? "\n" + lines.join("\n") : "";
   }
 
   var join = { emoji: "", nickOk: false, checkTimer: null, seq: 0 };
