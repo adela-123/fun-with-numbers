@@ -27,6 +27,8 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CI: "true"
     steps:
+      - uses: actions/checkout@v4
+
       - name: Check that the Cloudflare secrets are set
         id: secrets
         run: |
@@ -36,9 +38,6 @@ jobs:
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
-
-      - uses: actions/checkout@v4
-        if: steps.secrets.outputs.ready == 'true'
 
       - uses: actions/setup-node@v4
         if: steps.secrets.outputs.ready == 'true'
