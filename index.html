@@ -356,6 +356,34 @@ body {
   .key { min-height: 46px; font-size: 24px; }
   .key.go { min-height: 52px; }
 }
+/* Phones held sideways: the question on the left, the number keys on the right. */
+@media (orientation: landscape) and (max-height: 520px) {
+  #play.game {
+    max-width: 900px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(220px, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    column-gap: 18px; row-gap: 6px;
+    padding: 8px max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left));
+  }
+  #play .strip { grid-column: 1; grid-row: 1; }
+  #play .meter { grid-column: 1; grid-row: 2; }
+  #play .card { grid-column: 1; grid-row: 3; min-height: 0; padding: 6px 12px 8px; gap: 2px; }
+  #play .foot { grid-column: 1; grid-row: 4; }
+  #play .pad { grid-column: 2; grid-row: 1 / span 4; align-self: center; gap: 8px; }
+  #play .level { font-size: 17px; }
+  #play .chip { font-size: 16px; padding: 1px 10px; }
+  #play .problem { font-size: clamp(34px, 11vh, 52px); }
+  #play .problem.big { font-size: clamp(28px, 9vh, 40px); }
+  #play .timer { font-size: 20px; min-height: 22px; }
+  #play .feedback { min-height: 52px; gap: 2px; }
+  #play .big-emoji { font-size: 26px; min-height: 28px; }
+  #play .msg { font-size: 18px; }
+  #play .sub, #play .round-info { font-size: 13px; min-height: 0; }
+  #play .mode { font-size: 14px; padding: 3px 10px 2px; }
+  #play .pad .key { min-height: 0; height: 13vh; font-size: 22px; padding: 2px 0 0; }
+  #play .pad .key.go { height: 15vh; font-size: 21px; }
+}
 </style>
 </head>
 <body>
