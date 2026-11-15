@@ -14,8 +14,8 @@ how the player is doing, tracks speed for every fact, and has an optional public
 ## How the leaderboard works
 
 - A 10 × 10 grid. Each square shows the emoji of the player who is currently fastest at that fact.
-- A player's time on a fact counts once they have answered it at least 3 times and the last 3
-  were right. The time is recent-weighted, from the last 2 weeks, and the faster of normal and
+- A player's time on a fact counts once they have answered it at least 2 times and the last 2
+  were right. (Stars on the player's own chart still need 3 in a row.) The time is recent-weighted, from the last 2 weeks, and the faster of normal and
   insane mode is used.
 - On a tie (to a tenth of a second), whoever reached that time first keeps the square.
 - Players pick one of 50 emojis and a nickname. Both must be unused, and nicknames are checked

@@ -351,7 +351,7 @@ body {
   <section class="panel">
     <div class="grid10 lb-grid" id="boardGrid"></div>
     <div class="readout" id="boardReadout">Tap a square to see who holds it.</div>
-    <p id="boardRules">A square counts once a player has answered that fact right 3 times in a row, using their recent time from the last 2 weeks. The faster of normal and insane mode counts. On a tie, whoever got there first keeps it.</p>
+    <p id="boardRules">A square counts once a player has answered that fact right 2 times in a row, using their recent time from the last 2 weeks. The faster of normal and insane mode counts. On a tie, whoever got there first keeps it.</p>
   </section>
   <section class="panel">
     <h2>Players</h2>
@@ -1037,6 +1037,7 @@ body {
   // their emoji, nickname and the times below are the only things ever sent.
   var LB_API = (window.TTS_API || "https://fun-with-numbers-api.adelakabiljo.workers.dev").replace(/\/+$/, "");
   var LB_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+  var LB_STREAK = 2;    // right answers in a row before a fact counts on the leaderboard (stars still need 3)
   var LB_MIN_FACTS = 2; // facts that must count before a player can join
   var lb = { ok: false, err: "" };
   var lbBack = "home";
@@ -1061,14 +1062,14 @@ body {
     }).catch(function () {});
   }
 
-  // A fact counts once it was answered at least 3 times and the last 3 were right, with a
+  // A fact counts once it was answered at least LB_STREAK times and the last LB_STREAK were right, with a
   // time from the last 2 weeks. The faster of normal and insane mode is used.
   function boardTimes(s) {
     var now = Date.now(), out = [];
     for (var a = 1; a <= 10; a++) for (var b = 1; b <= 10; b++) {
       var k = keyOf(a, b), best = null;
       [s.f[k], s.fi[k]].forEach(function (r) {
-        if (!r || r.n < 3 || r.c < 3 || !r.t || !r.at || now - r.at > LB_WINDOW_MS) return;
+        if (!r || r.n < LB_STREAK || r.c < LB_STREAK || !r.t || !r.at || now - r.at > LB_WINDOW_MS) return;
         if (!best || r.t < best.ms) best = { c: k, ms: Math.round(r.t), at: r.at };
       });
       if (best) out.push(best);
@@ -1122,7 +1123,7 @@ body {
         row.appendChild(lbButton("Join", function () { showJoin(); }));
       } else {
         // Joining with nothing to show would put an empty row on the board, so wait until a few facts count.
-        p.appendChild(node("p", "", "You can join once " + LB_MIN_FACTS + " facts are ready: answer a fact right 3 times in a row to make it ready. Ready so far: " + ready + " of " + LB_MIN_FACTS + "."));
+        p.appendChild(node("p", "", "You can join once " + LB_MIN_FACTS + " facts are ready: answer a fact right " + LB_STREAK + " times in a row to make it ready. Ready so far: " + ready + " of " + LB_MIN_FACTS + "."));
       }
       row.appendChild(lbButton("See leaderboard", function () { lbBack = "report"; showBoard(); }));
     }
@@ -1180,7 +1181,7 @@ body {
       return btn;
     }
     var held = (d.players || []).length;
-    el.boardReadout.textContent = held ? "Tap a square to see who holds it." : "Nobody holds a square yet. Answer a fact right 3 times in a row to claim it!";
+    el.boardReadout.textContent = held ? "Tap a square to see who holds it." : "Nobody holds a square yet. Answer a fact right " + LB_STREAK + " times in a row to claim it!";
     el.boardLegend.textContent = "";
     (d.players || []).forEach(function (p) {
       var r = node("div", "legend-row");
