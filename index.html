@@ -83,6 +83,7 @@ body {
 .mute:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .mute[aria-pressed="true"] { background: var(--paper); border-style: dashed; }
 .meter { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+.meter .mute { font-size: 15px; padding: 0 8px; flex: 0 0 auto; }
 .meter-track {
   flex: 1; height: 14px; background: var(--card);
   border: 2px solid var(--ink); border-radius: 999px; overflow: hidden;
@@ -309,7 +310,10 @@ body {
 .legend-list { display: flex; flex-direction: column; gap: 6px; }
 .legend-row { display: flex; align-items: center; gap: 10px; font-size: 17px; }
 .legend-row .em { font-size: 24px; width: 32px; text-align: center; }
-.legend-row .nm { flex: 1; font-weight: 700; overflow-wrap: anywhere; }
+.legend-row .nm { flex: 1; font-weight: 700; overflow-wrap: anywhere; display: flex; flex-direction: column; }
+.legend-row .nm small { font-weight: 400; font-size: 13px; color: var(--muted); }
+.legend-row .rank { width: 22px; text-align: right; color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; }
+.legend-row.me .nm { color: var(--accent); }
 .legend-row .ct { color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .emoji-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 6px; }
 .emoji-pick button {
@@ -356,33 +360,58 @@ body {
   .key { min-height: 46px; font-size: 24px; }
   .key.go { min-height: 52px; }
 }
-/* Phones held sideways: the question on the left, the number keys on the right. */
-@media (orientation: landscape) and (max-height: 520px) {
-  #play.game {
-    max-width: 900px;
-    display: grid;
-    grid-template-columns: minmax(0, 1.25fr) minmax(220px, 1fr);
-    grid-template-rows: auto auto minmax(0, 1fr) auto;
-    column-gap: 18px; row-gap: 6px;
-    padding: 8px max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left));
+/* Phones held sideways don't have room for the game: ask to turn the device upright. */
+.rotate { display: none; }
+@media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  .rotate {
+    display: flex; position: fixed; inset: 0; z-index: 50;
+    flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+    background: var(--paper); color: var(--ink); text-align: center; padding: 20px;
+    font-family: var(--display); font-weight: 800; font-size: 26px;
   }
-  #play .strip { grid-column: 1; grid-row: 1; }
-  #play .meter { grid-column: 1; grid-row: 2; }
-  #play .card { grid-column: 1; grid-row: 3; min-height: 0; padding: 6px 12px 8px; gap: 2px; }
-  #play .foot { grid-column: 1; grid-row: 4; }
-  #play .pad { grid-column: 2; grid-row: 1 / span 4; align-self: center; gap: 8px; }
-  #play .level { font-size: 17px; }
-  #play .chip { font-size: 16px; padding: 1px 10px; }
-  #play .problem { font-size: clamp(34px, 11vh, 52px); }
-  #play .problem.big { font-size: clamp(28px, 9vh, 40px); }
-  #play .timer { font-size: 20px; min-height: 22px; }
-  #play .feedback { min-height: 52px; gap: 2px; }
+  .rotate .big { font-size: 64px; line-height: 1; }
+  .rotate small { font-family: var(--body); font-weight: 400; font-size: 17px; color: var(--muted); }
+}
+
+/* Play screen: one fixed-height screen. The question box takes the space left over, so its
+   size never changes while playing and the keys below stay put. */
+#play.game { height: 100vh; height: 100svh; min-height: 0; overflow: hidden; gap: 10px; }
+#play .strip { flex-wrap: nowrap; }
+#play .level { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#play .counts { flex: 0 0 auto; }
+#play .meter, #play .pad, #play .foot { flex: 0 0 auto; }
+#play .card { flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+#play .round-info { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; flex: 0 0 auto; }
+#play .ticker { position: relative; display: grid; place-items: center; height: 28px; width: 100%; flex: 0 0 auto; }
+#play .ticker > * { grid-area: 1 / 1; margin: 0; }
+#play .problem { flex: 0 0 auto; flex-wrap: nowrap; white-space: nowrap; }
+#play .pad .key { min-height: 0; height: clamp(44px, 7.5svh, 58px); font-size: 26px; padding-top: 4px; }
+#play .pad .key.go { height: clamp(48px, 8svh, 62px); font-size: 24px; }
+#play .foot { height: 28px; align-items: center; }
+#play .foot .link { padding: 2px 8px; }
+/* Shorter phones: drop the level/stars line (the level shows on the break screens). */
+@media (max-height: 700px) {
+  #play .strip { display: none; }
+  #play.game { padding-top: 10px; }
+}
+/* Centre the box's contents when they fit, but never cut off the top when they don't. */
+#play .card { justify-content: flex-start; }
+#play .card > .round-info { margin-top: auto; }
+#play .card > .feedback { margin-bottom: auto; }
+@media (max-height: 780px) {
+  #play .card { padding: 6px 10px 8px; gap: 2px; }
+  #play .feedback { min-height: 64px; gap: 2px; }
   #play .big-emoji { font-size: 26px; min-height: 28px; }
   #play .msg { font-size: 18px; }
-  #play .sub, #play .round-info { font-size: 13px; min-height: 0; }
+  #play .sub, #play .round-info { font-size: 13px; }
+  #play .ticker { height: 24px; }
+  #play .timer { font-size: 20px; min-height: 22px; }
   #play .mode { font-size: 14px; padding: 3px 10px 2px; }
-  #play .pad .key { min-height: 0; height: 13vh; font-size: 22px; padding: 2px 0 0; }
-  #play .pad .key.go { height: 15vh; font-size: 21px; }
+}
+@media (max-height: 600px) {
+  #play .problem { font-size: clamp(34px, 11vw, 48px); }
+  #play .feedback { min-height: 0; }
+  #play .big-emoji { display: none; }
 }
 </style>
 </head>
@@ -480,7 +509,7 @@ body {
 
   <section class="panel">
     <h2>🔊 Music</h2>
-    <p>Music plays while you answer. Tap 🔊 at the top to turn it off.</p>
+    <p>Music plays while you answer. Tap 🔊 next to the level bar to turn it off.</p>
   </section>
 
   <div class="report-actions">
@@ -527,15 +556,17 @@ body {
 
 <main class="game" id="board" hidden>
   <h1 class="report-title">🏆 Leaderboard</h1>
-  <p class="report-line" id="boardIntro">Who is fastest at each fact right now.</p>
+  <p class="report-line" id="boardIntro">Everyone on the leaderboard, and who is fastest at each fact right now.</p>
   <section class="panel">
+    <h2>Players</h2>
+    <p>Most accurate first: right answers out of each player's last 100.</p>
+    <div class="legend-list" id="boardLegend"></div>
+  </section>
+  <section class="panel">
+    <h2>Fastest at each fact</h2>
     <div class="grid10 lb-grid" id="boardGrid"></div>
     <div class="readout" id="boardReadout">Tap a square to see who holds it.</div>
     <p id="boardRules">A square counts once a player has answered that fact right 2 times in a row, using their recent time from the last 2 weeks. The faster of normal and insane mode counts. On a tie, whoever got there first keeps it.</p>
-  </section>
-  <section class="panel">
-    <h2>Players</h2>
-    <div class="legend-list" id="boardLegend"></div>
   </section>
   <div class="report-actions">
     <button class="key go" type="button" id="boardBack">Back ▶</button>
@@ -578,13 +609,14 @@ body {
   </div>
 </main>
 
+<div class="rotate" role="alert"><div class="big">📱↻</div>Please turn your device upright<small>The game needs a tall screen to fit the number keys.</small></div>
+
 <main class="game" id="play" hidden>
   <div class="strip">
     <div class="level" id="level">Level 1 · Sprout 🌱</div>
     <div class="counts">
       <div class="chip" id="stars" aria-label="Stars collected">⭐ 0</div>
       <div class="chip" id="streak" aria-label="Correct in a row">🔥 0</div>
-      <button class="chip mute" type="button" id="musicBtn" aria-pressed="false" aria-label="Mute music">🔊</button>
     </div>
   </div>
   <div class="meter">
@@ -593,12 +625,15 @@ body {
       <div class="meter-fill" id="meterFill"></div>
     </div>
     <span id="nextEmoji">🧭</span>
+    <button class="chip mute" type="button" id="musicBtn" aria-pressed="false" aria-label="Mute music">🔊</button>
   </div>
 
   <section class="card" id="card">
     <div class="round-info" id="roundInfo"></div>
-    <div class="fuse" id="fuse" hidden aria-hidden="true"><i></i></div>
-    <div class="timer hidden" id="timer" aria-hidden="true"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+    <div class="ticker">
+      <div class="fuse" id="fuse" hidden aria-hidden="true"><i></i></div>
+      <div class="timer hidden" id="timer" aria-hidden="true"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+    </div>
     <div class="problem" id="problem">
       <span id="question">Ready?</span>
       <span id="equals" hidden>=</span>
@@ -1431,19 +1466,25 @@ body {
       });
       return btn;
     }
-    var held = (d.players || []).length;
+    var held = Object.keys(d.cells || {}).length;
     el.boardReadout.textContent = held ? "Tap a square to see who holds it." : "Nobody holds a square yet. Answer a fact right " + LB_STREAK + " times in a row to claim it!";
+    // Everyone who joined, most accurate first (players with no answers yet last).
+    var share = function (p) { return p.total ? p.right / p.total : -1; };
+    var list = (d.players || []).slice().sort(function (x, y) {
+      return share(y) - share(x) || y.total - x.total || y.squares - x.squares || x.nickname.localeCompare(y.nickname);
+    });
     el.boardLegend.textContent = "";
-    (d.players || []).forEach(function (p) {
-      var r = node("div", "legend-row");
+    list.forEach(function (p, i) {
+      var r = node("div", "legend-row" + (mine[p.id] ? " me" : ""));
+      r.appendChild(node("span", "rank", String(i + 1)));
       r.appendChild(node("span", "em", p.emoji));
-      r.appendChild(node("span", "nm", p.nickname + (mine[p.id] ? " (this device)" : "")));
-      var ct = p.squares + (p.squares === 1 ? " square" : " squares");
-      if (p.total) ct += " · " + p.right + " of last " + p.total + " right";
-      r.appendChild(node("span", "ct", ct));
+      var nm = node("span", "nm", p.nickname + (mine[p.id] ? " (this device)" : ""));
+      nm.appendChild(node("small", "", p.squares + (p.squares === 1 ? " square" : " squares")));
+      r.appendChild(nm);
+      r.appendChild(node("span", "ct", p.total ? p.right + " of " + p.total + " · " + Math.round(p.right / p.total * 100) + "%" : "no answers yet"));
       el.boardLegend.appendChild(r);
     });
-    if (!held) el.boardLegend.appendChild(node("p", "", "No one is on the board yet."));
+    if (!list.length) el.boardLegend.appendChild(node("p", "", "No one has joined the leaderboard yet."));
   }
 
   // The time of whoever is playing (or, from the start screen, everyone on this device) on one fact.

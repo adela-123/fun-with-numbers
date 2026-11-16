@@ -112,30 +112,30 @@ async function authed(env, data) {
 async function board(env, game) {
   const since = Date.now() - WINDOW_MS;
   const { results } = await env.DB.prepare(
-    `SELECT t.cell, t.ms, t.since, p.id, p.emoji, p.nickname
-       FROM times t JOIN players p ON p.id = t.player_id
+    `SELECT t.cell, t.ms, t.since, t.player_id AS id
+       FROM times t
       WHERE t.game = ?1 AND t.at > ?2
       ORDER BY t.cell, t.ms, t.since`
   ).bind(game, since).all();
+  // Every player who joined, with their right-answer share in this game (if any yet).
+  const all = await env.DB.prepare(
+    `SELECT p.id, p.emoji, p.nickname, s.acc_right AS right, s.acc_total AS total
+       FROM players p LEFT JOIN stats s ON s.player_id = p.id AND s.game = ?1`
+  ).bind(game).all();
+  const byId = {};
+  for (const p of all.results) {
+    byId[p.id] = { id: p.id, emoji: p.emoji, nickname: p.nickname, squares: 0, right: p.right || 0, total: p.total || 0 };
+  }
   const cells = {};
-  const holders = {};
   for (const r of results) {
-    if (cells[r.cell]) continue; // rows are sorted: the first per fact is the fastest, earliest on a tie
+    if (cells[r.cell] || !byId[r.id]) continue; // rows are sorted: the first per fact is the fastest, earliest on a tie
     cells[r.cell] = { ms: r.ms, p: r.id };
-    holders[r.id] = holders[r.id] || { id: r.id, emoji: r.emoji, nickname: r.nickname, squares: 0 };
-    holders[r.id].squares += 1;
+    byId[r.id].squares += 1;
   }
-  const ids = Object.keys(holders);
-  if (ids.length) {
-    const st = await env.DB.prepare(
-      `SELECT player_id, acc_right, acc_total FROM stats WHERE game = ?1 AND player_id IN (SELECT value FROM json_each(?2))`
-    ).bind(game, JSON.stringify(ids)).all();
-    for (const s of st.results) {
-      holders[s.player_id].right = s.acc_right;
-      holders[s.player_id].total = s.acc_total;
-    }
-  }
-  const players = Object.values(holders).sort((a, b) => b.squares - a.squares || a.nickname.localeCompare(b.nickname));
+  // Best recent accuracy first; players without answers yet go last.
+  const share = (p) => (p.total ? p.right / p.total : -1);
+  const players = Object.values(byId).sort((a, b) =>
+    share(b) - share(a) || b.total - a.total || b.squares - a.squares || a.nickname.localeCompare(b.nickname));
   return { game, cells, players, windowDays: 14 };
 }
 
