@@ -379,7 +379,13 @@ body {
 #play .strip { flex-wrap: nowrap; }
 #play .level { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #play .counts { flex: 0 0 auto; }
-#play .meter, #play .pad, #play .foot { flex: 0 0 auto; }
+#play .topbar, #play .meter, #play .pad { flex: 0 0 auto; }
+/* Stop sits at the top, well away from the Check button. */
+#play .topbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+#play .stop { cursor: pointer; color: var(--ink); font-family: var(--body); font-size: 15px; font-weight: 700; padding: 3px 12px; }
+#play .stop:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+#play .topbar .mute { font-size: 15px; padding: 3px 10px; }
+#play.game { padding-bottom: max(14px, env(safe-area-inset-bottom)); }
 #play .card { flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 #play .round-info { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; flex: 0 0 auto; }
 #play .ticker { position: relative; display: grid; place-items: center; height: 28px; width: 100%; flex: 0 0 auto; }
@@ -387,8 +393,6 @@ body {
 #play .problem { flex: 0 0 auto; flex-wrap: nowrap; white-space: nowrap; }
 #play .pad .key { min-height: 0; height: clamp(44px, 7.5svh, 58px); font-size: 26px; padding-top: 4px; }
 #play .pad .key.go { height: clamp(48px, 8svh, 62px); font-size: 24px; }
-#play .foot { height: 28px; align-items: center; }
-#play .foot .link { padding: 2px 8px; }
 /* Shorter phones: drop the level/stars line (the level shows on the break screens). */
 @media (max-height: 700px) {
   #play .strip { display: none; }
@@ -443,7 +447,7 @@ body {
       <li>Pick your name on the start screen, or type a new one, then press <strong>Play</strong>.</li>
       <li>After a <strong>3, 2, 1, Go!</strong> countdown, type the answer with the number keys and press <strong>Enter</strong> or <strong>Check</strong>.</li>
       <li>You find out straight away if it's right. A green card means right, a red card shows the correct answer.</li>
-      <li>Keep going as long as you like. Press <strong>S</strong> or <strong>Stop</strong> to finish and see your report.</li>
+      <li>Keep going as long as you like. Press <strong>S</strong>, or tap <strong>Stop</strong> at the top, to finish and see your report.</li>
       <li>If nobody presses anything for 45 seconds, the game stops by itself and keeps your stars.</li>
     </ul>
   </section>
@@ -509,7 +513,7 @@ body {
 
   <section class="panel">
     <h2>🔊 Music</h2>
-    <p>Music plays while you answer. Tap 🔊 next to the level bar to turn it off.</p>
+    <p>Music plays while you answer. Tap 🔊 at the top right to turn it off.</p>
   </section>
 
   <div class="report-actions">
@@ -612,6 +616,10 @@ body {
 <div class="rotate" role="alert"><div class="big">📱↻</div>Please turn your device upright<small>The game needs a tall screen to fit the number keys.</small></div>
 
 <main class="game" id="play" hidden>
+  <div class="topbar">
+    <button class="chip stop" type="button" id="stop">Stop round</button>
+    <button class="chip mute" type="button" id="musicBtn" aria-pressed="false" aria-label="Mute music">🔊</button>
+  </div>
   <div class="strip">
     <div class="level" id="level">Level 1 · Sprout 🌱</div>
     <div class="counts">
@@ -625,7 +633,6 @@ body {
       <div class="meter-fill" id="meterFill"></div>
     </div>
     <span id="nextEmoji">🧭</span>
-    <button class="chip mute" type="button" id="musicBtn" aria-pressed="false" aria-label="Mute music">🔊</button>
   </div>
 
   <section class="card" id="card">
@@ -663,7 +670,6 @@ body {
     <button class="key" type="button" data-k="back" aria-label="Erase">⌫</button>
     <button class="key go" type="button" id="go">Play ▶</button>
   </div>
-  <div class="foot"><button class="link" type="button" id="stop">Stop round</button></div>
 </main>
 
 <script>
